@@ -3,7 +3,7 @@ import openeo.processes as eop
 from openeo.extra.spectral_indices.spectral_indices import compute_and_rescale_indices
 
 
-def compute_yearly_features_and_monthly_s2composites(
+def compute_yearly_s2features_and_monthly_s2composites(
     s2_datacube: openeo.DataCube, bands: list = None, nb_of_months: int = 12
 ) -> openeo.DataCube:
     """
@@ -14,8 +14,8 @@ def compute_yearly_features_and_monthly_s2composites(
     if bands is not None:
         s2_rescaled = s2_rescaled.filter_bands(bands)
 
-    s2_yearly = compute_yearly_features(s2_rescaled)
-    s2_monthly = compute_monthly_composites(s2_rescaled, nb_of_months=nb_of_months)
+    s2_yearly = compute_yearly_s2features(s2_rescaled)
+    s2_monthly = compute_monthly_s2composites(s2_rescaled, nb_of_months=nb_of_months)
 
     s2_merged = s2_yearly.merge_cubes(s2_monthly)
     return s2_merged

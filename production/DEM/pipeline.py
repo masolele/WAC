@@ -1,9 +1,15 @@
 import geopandas as gpd
-import pandas as pd
 import openeo
-import openeo.processes as eop
-from helper.eo_utils import compute_percentiles
 from helper.jobmanager_utils import build_job_options
+
+"""
+Extract DEM elevation on 30 m resolution. Load precalculated DEM aspect and DEM slope at 10m resolution. The data is stored in the
+CloudFerro S3 stoage, allowing faster access and processing from the CDSE
+backend.
+
+Limitations:
+    - DEM elevation will need to be resampled for merging to 10m resolution.
+"""
 
 def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
@@ -38,6 +44,7 @@ def start_job(
     }
 
     # 1. DEM elevation
+    #TODO precompute 10m resolution?
     elevation = connection.load_collection(
         collection_id="COPERNICUS_30",
         spatial_extent=spatial_extent,
@@ -66,8 +73,8 @@ def start_job(
     aspect = aspect.rename_labels("bands", ["ASPECT"])
     aspect = aspect.max_time()
 
-    DEM_cube = elevation.merge_cubes(slope)
-    DEM_cube = DEM_cube.merge_cubes(aspect)
+    DEM_cube = slope.merge_cubes(aspect)
+    DEM_cube = DEM_cube.merge_cubes(elevation)
     
     # build the job options from the dataframe
     job_options = build_job_options(row)

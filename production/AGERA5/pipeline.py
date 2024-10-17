@@ -1,14 +1,31 @@
+"""
+Extract the precipitation and temperature AGERA5 data from a
+pre-composited and pre-processed collection. The data is stored in the
+CloudFerro S3 stoage, allowing faster access and processing from the CDSE
+backend.
+
+Limitations:
+    - Only monthly composited data is available.
+    - Only two bands are available: precipitation-flux and temperature-mean.
+    - This function do not support fetching points or polygons, but only
+      tiles. #TODO how so?
+
+
+
+"""
+
+
 import geopandas as gpd
-import pandas as pd
 import openeo
-import openeo.processes as eop
-from helper.eo_utils import compute_percentiles
 from helper.jobmanager_utils import build_job_options
 
 def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
 ):
     """
+
+
+
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
