@@ -1,5 +1,12 @@
+"""
+Extract precalculated monthly S1 composites.
+
+Limitations:
+    - only available for 2019-2021.
+"""
+
+
 import geopandas as gpd
-import pandas as pd
 import openeo
 import openeo.processes as eop
 from helper.eo_utils import compute_percentiles

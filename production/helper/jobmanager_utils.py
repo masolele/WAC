@@ -17,3 +17,27 @@ def build_job_options(row):
         job_options["python-memory"] = row.python_memory
     
     return job_options
+
+def calculate_month_difference(start_date_str, end_date_str):
+    """
+    Calculate the number of months between two dates.
+    
+    Args:
+    start_date_str (str): The start date as a string in "YYYY-MM-DD" format.
+    end_date_str (str): The end date as a string in "YYYY-MM-DD" format.
+
+    Returns:
+    int: The number of months between the two dates.
+    """
+    # Convert the date strings to datetime objects
+    startdate = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    enddate = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
+    
+    # Calculate the year and month difference
+    year_diff = enddate.year - startdate.year
+    month_diff = enddate.month - startdate.month
+    
+    # Total number of months
+    total_months = year_diff * 12 + month_diff
+    
+    return total_months
