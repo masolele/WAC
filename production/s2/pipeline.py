@@ -9,7 +9,7 @@ and monthly composites for the given temporal and spatial extent.
 import geopandas as gpd
 import openeo
 import openeo.processes as eop
-from helper.eo_utils import compute_percentiles, divide_bands, compute_yearly_s2features_and_monthly_s2composites
+from helper.eo_utils import compute_yearly_s2features_and_monthly_s2composites
 from helper.jobmanager_utils import build_job_options
 from helper.scl_preprocessing import compute_scl_aux
 from helper.jobmanager_utils import calculate_month_difference
@@ -58,7 +58,7 @@ def start_job(
         spatial_extent=spatial_extent,
         temporal_extent=temporal_extent,
         bands=["B02", "B03", "B04", "B08", "B11", "B12"],
-        max_cloud_cover=max_cloud_cover,
+        max_cloud_cover=MAX_CLOUD_COVER,
     )
     
     # Step 2: Load the SCL collection for cloud masking
@@ -67,7 +67,7 @@ def start_job(
         spatial_extent=spatial_extent,
         temporal_extent=temporal_extent,
         bands=["SCL"],
-        max_cloud_cover=max_cloud_cover,
+        max_cloud_cover=MAX_CLOUD_COVER,
     )
     
     # Step 3: Compute the cloud mask and auxiliary data from SCL
@@ -98,7 +98,7 @@ def start_job(
 
     # Create the job
     job = result_datacube.create_job(
-        title=f"LCFM S1 - {row.location_id}",
+        title=f"LCFM S2 - {row.location_id}",
         description=str(row),
         job_options=job_options
     )
@@ -107,8 +107,3 @@ def start_job(
     )
     return job
 
-
-def divide_bands(bands):
-    vv = bands[0]
-    vh = bands[1]
-    return eop.array_append(bands, eop.divide(vh, vv))
