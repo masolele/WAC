@@ -63,6 +63,7 @@ def start_job(
 
     stats = compute_percentiles(s1_with_ratio)
 
+
     save_result_options = {
         "filename_prefix": f"wac-s1-{row.location_id}",
     }
