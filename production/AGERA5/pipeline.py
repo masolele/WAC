@@ -23,20 +23,14 @@ def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
 ):
     """
-
-
-
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
         - location_id
-        - west
-        - south
-        - east
-        - north
-        - epsg
-        - startdate
-        - enddate
+        - original job bounds
+        - original job crs
+        - spatial_extent
+        - temporal_extent
         - executor_memory
         - executor_memoryOverhead
         - python_memory
@@ -46,15 +40,8 @@ def start_job(
     print(f"Starting job for \n{row}")
 
     # Get the spatial extent
-    spatial_extent = {
-        "west": int(row.west),
-        "south": int(row.south),
-        "east": int(row.east),
-        "north": int(row.north),
-        "crs": "EPSG:" + str(row.epsg),
-    }
-
-    temporal_extent = [str(row.startdate), str(row.enddate)]
+    spatial_extent = row.spatial_extent
+    temporal_extent = row.temporal_extent
 
     # Monthly composited METEO data
     cube = connection.load_stac(

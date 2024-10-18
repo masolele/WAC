@@ -47,49 +47,8 @@ def calculate_month_difference(start_date_str, end_date_str):
     
     return total_months
 
-def create_job_dataframe(split_jobs: List[gpd.GeoDataFrame], config: dict) -> pd.DataFrame:
-    """Create a dataframe from the split jobs, using config to set job parameters."""
-    columns = [
-        'location_id', 'west', 'south', 'east', 'north', 'epsg',
-        'startdate', 'enddate', 'executor_memory', 'executor_memoryOverhead',
-        'python_memory', 'export_workspace', 'asset_per_band'
-    ]
-    
-    rows = []
-    for job in split_jobs:
-        # 1. Set location_id (using h3index or similar identifier)
-        location_id = job.h3index.iloc[0]
-
-        patch = buffer_geometry(job.geometry, int(config['buffer']))        
-        # 2. Calculate bounding box for spatial extent (west, south, east, north)
-        bounds = patch.total_bounds
-        west, south, east, north = bounds[0], bounds[1], bounds[2], bounds[3]
-
-        # Use values from the config
-        epsg = patch.crs.to_string()
-    
-        startdate = config['startdate']
-        enddate = config['enddate']
-        executor_memory = config['executor_memory']
-        executor_memoryOverhead = config['executor_memoryOverhead']
-        python_memory = config['python_memory']
-        export_workspace = config['export_workspace']
-        asset_per_band = config['asset_per_band']
-
-        # Append the row
-        rows.append(
-            pd.Series(
-                dict(zip(columns, [
-                    location_id, west, south, east, north, epsg, startdate, enddate,
-                    executor_memory, executor_memoryOverhead, python_memory, export_workspace, asset_per_band
-                ]))
-            )
-        )
-
-    return pd.DataFrame(rows)
-
-
 def buffer_geometry(geometry: geojson.FeatureCollection, buffer: int) -> gpd.GeoDataFrame:
+    #TODO; evaluate if this function works when splitting up H3
     """
     Buffer the input geometry by a specified distance and round to the nearest 20m on the S2 grid.
 
@@ -107,3 +66,75 @@ def buffer_geometry(geometry: geojson.FeatureCollection, buffer: int) -> gpd.Geo
     ).buffer(distance=buffer, cap_style=3)  # cap_style=3 for square-shaped buffer
 
     return gdf
+
+def create_job_dataframe(split_jobs: List[gpd.GeoDataFrame], config: dict) -> pd.DataFrame:
+    """Create a dataframe from the split jobs, using config to set job parameters, 
+    and store both original and buffered spatial extents."""
+    
+    columns = [
+        'location_id', 'original_bounds', 'original_crs', 'spatial_extent', 'temporal_extent',
+        'executor_memory', 'executor_memoryOverhead', 'python_memory', 
+        'export_workspace', 'asset_per_band'
+    ]
+    
+    rows = []
+    for job in split_jobs:
+
+        # 1. Set location_id (using h3index or similar identifier)
+        location_id = job.h3index.iloc[0]
+        original_bounds = job.total_bounds
+        original_crs = job.crs.to_string()
+
+
+        buffer_val = config['buffer']
+        # 1. Create spatial extent based on buffer value in config (patch or point)
+        if buffer_val is not None and int(buffer_val) > 0:
+            buffer_val = int(buffer_val)
+
+            patch = buffer_geometry(job.geometry, int(config['buffer']))
+            patch_bounds = patch.total_bounds
+            west, south, east, north = patch_bounds[0], patch_bounds[1], patch_bounds[2], patch_bounds[3]
+            patch_crs = patch.crs.to_string()
+
+            spatial_extent = {
+                "west": west,
+                "south": south,
+                "east": east,
+                "north": north,
+                "crs": patch_crs
+                }
+            
+        else:
+            west, south, east, north = original_bounds[0], original_bounds[1], original_bounds[2], original_bounds[3]
+
+            spatial_extent = {
+                "west": west,
+                "south": south,
+                "east": east,
+                "north": north,
+                "crs": original_crs
+            }
+
+
+        # 3. Use values from the config for time and memory settings
+        temporal_extent = [str(config['start_date']), str(config['end_date'])]
+        executor_memory = config['executor_memory']
+        executor_memoryOverhead = config['executor_memoryOverhead']
+        python_memory = config['python_memory']
+        export_workspace = config['export_workspace']
+        asset_per_band = config['asset_per_band']
+
+        # 4. Append the row
+        rows.append(
+            pd.Series(
+                dict(zip(columns, [
+                    location_id, original_bounds, original_crs, spatial_extent, temporal_extent,
+                    executor_memory, executor_memoryOverhead, python_memory, 
+                    export_workspace, asset_per_band
+                ]))
+            )
+        )
+
+    return pd.DataFrame(rows)
+
+
