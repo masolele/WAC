@@ -1,7 +1,7 @@
-#TODO include BAP?
+#TODO include BAP
 
 import geopandas as gpd
-import ast
+import pyproj
 import openeo
 from helper.eo_utils import compute_yearly_s2features_and_monthly_s2composites
 from helper.jobmanager_utils import build_job_options
@@ -15,7 +15,7 @@ and monthly composites for the given temporal and spatial extent.
 """
 
 
-MAX_CLOUD_COVER = 90
+MAX_CLOUD_COVER = 70
 
 def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
@@ -34,7 +34,6 @@ def start_job(
         - export_workspace #TODO not applicable just yet: require to set up WAC STR storage
         - asset_per_band 
     """
-
     spatial_extent = {'west': float(row.west),
                       'east': float(row.east),
                       'north': float(row.north),
@@ -91,7 +90,7 @@ def start_job(
 
     save_result_options = {
         # TODO change the filename_prefix to the correct format, extra variables can be added in the job_db and used here
-        "filename_prefix": f"WAC_S2_",
+        "filename_prefix": f"WAC_S2_{row.id}",
     }
     if "asset_per_band" in row and row.asset_per_band:
         save_result_options["separate_asset_per_band"] = True

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "[1729535319183, 580761]",
+    "time": "2024-10-21T18:28:39.183Z",
+    "level": "error",
+    "message": "Task 7 in stage 172.0 failed 4 times; aborting job"
+  },
+  {
+    "id": "[1729535319192, 375198]",
+    "time": "2024-10-21T18:28:39.192Z",
+    "level": "error",
+    "message": "Stage error: Job aborted due to stage failure: Task 7 in stage 172.0 failed 4 times, most recent failure: Lost task 7.3 in stage 172.0 (TID 7516) (10.42.97.11 executor 1): java.lang.IllegalArgumentException: The number of bands in the metadata 35/77 does not match the actual band count in the cubes (left/right): 35/84. You can fix this by explicitly specifying correct band labels.\n\tat org.openeo.geotrellis.OpenEOProcesses.$anonfun$combine_bands$1(OpenEOProcesses.scala:970)\n\tat org.apache.spark.rdd.PairRDDFunctions.$anonfun$mapValues$3(PairRDDFunctions.scala:752)\n\tat scala.collection.Iterator$$anon$10.next(Iterator.scala:461)\n\tat scala.collection.Iterator$$anon$10.next(Iterator.scala:461)\n\tat scala.collection.Iterator$$anon$10.next(Iterator.scala:461)\n\tat scala.collection.Iterator$$anon$10.next(Iterator.scala:461)\n\tat scala.collection.Iterator$$anon$11.nextCur(Iterator.scala:486)\n\tat scala.collection.Iterator$$anon$11.hasNext(Iterator.scala:492)\n\tat org.apache.spark.shuffle.sort.BypassMergeSortShuffleWriter.write(BypassMergeSortShuffleWriter.java:140)\n\tat org.apache.spark.shuffle.ShuffleWriteProcessor.write(ShuffleWriteProcessor.scala:59)\n\tat org.apache.spark.scheduler.ShuffleMapTask.runTask(ShuffleMapTask.scala:101)\n\tat org.apache.spark.scheduler.ShuffleMapTask.runTask(ShuffleMapTask.scala:53)\n\tat org.apache.spark.TaskContext.runTaskWithListeners(TaskContext.scala:161)\n\tat org.apache.spark.scheduler.Task.run(Task.scala:139)\n\tat org.apache.spark.executor.Executor$TaskRunner.$anonfun$run$3(Executor.scala:554)\n\tat org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1529)\n\tat org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:557)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)\n\tat java.base/java.lang.Thread.run(Thread.java:829)\n\nDriver stacktrace:"
+  },
+  {
+    "id": "[1729535322275, 953399]",
+    "time": "2024-10-21T18:28:42.275Z",
+    "level": "error",
+    "message": "OpenEO batch job failed: Exception during Spark execution: java.lang.IllegalArgumentException: The number of bands in the metadata 35/77 does not match the actual band count in the cubes (left/right): 35/84. You can fix this by explicitly specifying correct band labels."
+  }
+]
