@@ -1,6 +1,7 @@
 import geopandas as gpd
 import openeo
 from helper.jobmanager_utils import build_job_options
+import ast
 
 """
 Extract DEM elevation on 30 m resolution. Load precalculated DEM aspect and DEM slope at 10m resolution. The data is stored in the
@@ -10,6 +11,7 @@ backend.
 Limitations:
     - DEM elevation will need to be resampled for merging to 10m resolution.
 """
+
 
 def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
@@ -32,8 +34,8 @@ def start_job(
     print(f"Starting job for \n{row}")
 
     # Get the spatial extent
-    spatial_extent = row.spatial_extent
-    temporal_extent = row.temporal_extent
+    spatial_extent = ast.literal_eval(row.spatial_extent)
+    temporal_extent = ast.literal_eval(row.temporal_extent)
 
     # 1. DEM elevation
     #TODO precompute 10m resolution?
