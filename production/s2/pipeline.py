@@ -1,17 +1,19 @@
 #TODO include BAP?
 
+import geopandas as gpd
+import ast
+import openeo
+from helper.eo_utils import compute_yearly_s2features_and_monthly_s2composites
+from helper.jobmanager_utils import build_job_options
+from helper.scl_preprocessing import compute_scl_aux
+from helper.jobmanager_utils import calculate_month_difference
+
 """
 Processes Sentinel-2 data by applying a cloud mask using SCL bands and computes yearly features 
 and monthly composites for the given temporal and spatial extent.
 
 """
 
-import geopandas as gpd
-import openeo
-from helper.eo_utils import compute_yearly_s2features_and_monthly_s2composites
-from helper.jobmanager_utils import build_job_options
-from helper.scl_preprocessing import compute_scl_aux
-from helper.jobmanager_utils import calculate_month_difference
 
 MAX_CLOUD_COVER = 90
 
@@ -22,22 +24,24 @@ def start_job(
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
-        - location_id
-        - original job bounds
-        - original job crs
-        - spatial_extent
+        - geometry
         - temporal_extent
+        - nb_patches
+        - original_extent
         - executor_memory
         - executor_memoryOverhead
         - python_memory
         - export_workspace #TODO not applicable just yet: require to set up WAC STR storage
         - asset_per_band 
     """
-    print(f"Starting job for \n{row}")
 
-    # Get the spatial extent
-    spatial_extent = row.spatial_extent
-    temporal_extent = row.temporal_extent
+    spatial_extent = {'west': float(row.west),
+                      'east': float(row.east),
+                      'north': float(row.north),
+                      'south': float(row.south),
+                     }
+    
+    temporal_extent = [str(row.start_date), str(row.end_date)]
 
     # build the job options from the dataframe
     job_options = build_job_options(row)
@@ -81,16 +85,29 @@ def start_job(
     )
     
     # Step 7: Ensure the output is in int16 range
-    result_datacube = merged_features.linear_scale_range(
+    merged_features = merged_features.linear_scale_range(
         -32_766, 32_766, -32_766, 32_766
     )
 
+    save_result_options = {
+        # TODO change the filename_prefix to the correct format, extra variables can be added in the job_db and used here
+        "filename_prefix": f"WAC_S2_",
+    }
+    if "asset_per_band" in row and row.asset_per_band:
+        save_result_options["separate_asset_per_band"] = True
+
+    result_datacube = merged_features.save_result(
+        format="GTiff",
+        options=save_result_options,
+    )
+    
     # Create the job
     job = result_datacube.create_job(
-        title=f"LCFM S2 - {row.location_id}",
+        title=f"LCFM S2 - {row.id}",
         description=str(row),
         job_options=job_options
     )
+
     print(
         f"Starting Job: {job.job_id} for \nspatial extent: \n{spatial_extent} \ntemporal extent: \n{temporal_extent} \nwith options \n{job_options}"
     )

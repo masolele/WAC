@@ -1,39 +1,30 @@
 #%%
 
 import geopandas as gpd
-from openeo_gfmap.manager.job_splitters import split_job_hex
 from helper.jobmanager_utils import create_job_dataframe
-import geopandas as gpd
 
 # Define the file path
-file_path = r"C:\Git_projects\WAC\production\resources\32736-random-points.geoparquet"
+file_path = r"C:\Git_projects\WAC\production\resources\Land_use_Roads_tile.shp"
 
-job_config = {
-    "start_date": "2020-01-01",
-    "end_date": "2020-02-01",
-    "executor_memory": "4G",
-    "executor_memoryOverhead": "1G",
-    "python_memory": "2G",
-    "export_workspace": "False",
-    "asset_per_band": "False",
-    "buffer": "320"
+# Example of how to use it with a config
+config = {
+    'start_date': '2024-01-01',
+    'end_date': '2024-12-31',
+    'executor_memory': '2GB',
+    'executor_memoryOverhead': '512MB',
+    'python_memory': '1GB',
+    'export_workspace': '/path/to/workspace',
+    'asset_per_band': 'some_value',
+    'patch_size': 64,          # Patch size in pixels
+    'pixel_size': 10,          # Spatial resolution in meters per pixel
+    'buffer': 320,              # Buffer distance in meters
+    'max_points': 5,           # Specify the maximum points
+    'rounding_resolution': 20   # Rounding resolution in meters to align with S2 tiles
 }
 
-#%%
-# Read the GeoParquet file
-base_df = gpd.read_parquet(file_path)
-if base_df.crs is None:
-    base_df.set_crs(epsg=32736, inplace=True)
-
-
-#Split the jobs per h3 hex #TODO push fix to standard gfmap
-split_jobs = split_job_hex(
-    base_df, max_points=1
-)
-
+base_df = gpd.read_file(file_path) 
 # Example usage with split_jobs and optional custom config
-job_df = create_job_dataframe(split_jobs, job_config)
-
+job_df = create_job_dataframe(base_df, config)
 job_df
 
 #%%
@@ -43,7 +34,7 @@ from openeo.extra.job_management import MultiBackendJobManager
 from s2.pipeline import start_job
 
 # Generate a unique name for the tracker
-job_tracker = 'community_example_job_tracker.parquet'
+job_tracker = 'example_job_tracker.csv'
 
 # Initiate MultiBackendJobManager 
 manager = MultiBackendJobManager()  
@@ -52,4 +43,21 @@ manager.add_backend("cdse", connection=connection, parallel_jobs=10)
 
 # Run the jobs
 manager.run_jobs(df=job_df, start_job=start_job, job_db=job_tracker)
+
+#%%
+import rasterio
+import rasterio.plot
+
+
+path_to_file = "./job_j-241021b4f95140768db20e13f850882e/WAC_S2_.tif"
+
+with rasterio.open(path_to_file) as dataset:
+    width = dataset.width  # Number of columns (pixels wide)
+    height = dataset.height  # Number of rows (pixels high)
+    
+    print(f"Width: {width} pixels")
+    print(f"Height: {height} pixels")
+    rasterio.plot.show(dataset)
+
+
 

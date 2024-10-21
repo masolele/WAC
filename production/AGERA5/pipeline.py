@@ -1,3 +1,8 @@
+import ast
+import geopandas as gpd
+import openeo
+from helper.jobmanager_utils import build_job_options
+
 """
 Extract the precipitation and temperature AGERA5 data from a
 pre-composited and pre-processed collection. The data is stored in the
@@ -13,11 +18,6 @@ Limitations:
 
 
 """
-
-
-import geopandas as gpd
-import openeo
-from helper.jobmanager_utils import build_job_options
 
 def start_job(
     row: gpd.GeoDataFrame, connection: openeo.Connection, *args: list, **kwargs: dict
@@ -40,8 +40,8 @@ def start_job(
     print(f"Starting job for \n{row}")
 
     # Get the spatial extent
-    spatial_extent = row.spatial_extent
-    temporal_extent = row.temporal_extent
+    spatial_extent = ast.literal_eval(row.spatial_extent)
+    temporal_extent = ast.literal_eval(row.temporal_extent)
 
     # Monthly composited METEO data
     cube = connection.load_stac(

@@ -1,16 +1,16 @@
+import ast
+import geopandas as gpd
+import openeo
+import openeo.processes as eop
+from helper.eo_utils import compute_percentiles
+from helper.jobmanager_utils import build_job_options
+
 """
 Extract precalculated monthly S1 composites.
 
 Limitations:
     - only available for 2019-2021.
 """
-
-
-import geopandas as gpd
-import openeo
-import openeo.processes as eop
-from helper.eo_utils import compute_percentiles
-from helper.jobmanager_utils import build_job_options
 
 
 def start_job(
@@ -34,8 +34,8 @@ def start_job(
     print(f"Starting job for \n{row}")
 
     # Get the spatial extent
-    spatial_extent = row.spatial_extent
-    temporal_extent = row.temporal_extent
+    spatial_extent = ast.literal_eval(row.spatial_extent)
+    temporal_extent = ast.literal_eval(row.temporal_extent)
 
     # build the job options from the dataframe
     job_options = build_job_options(row)
