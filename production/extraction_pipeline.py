@@ -12,20 +12,14 @@ config = {
     'end_date': '2024-12-31',
     'executor_memory': '2GB',
     'executor_memoryOverhead': '512MB',
-    'python_memory': '1GB',
-    'export_workspace': '/path/to/workspace',
-    'asset_per_band': 'some_value',
-    'patch_size': 64,          # Patch size in pixels
-    'pixel_size': 10,          # Spatial resolution in meters per pixel
-    'buffer': 320,              # Buffer distance in meters
-    'max_points': 5,           # Specify the maximum points
-    'rounding_resolution': 20   # Rounding resolution in meters to align with S2 tiles
+    'python_memory': '1GB'
 }
 
 base_df = gpd.read_file(file_path) 
-# Example usage with split_jobs and optional custom config
 job_df = create_job_dataframe(base_df, config)
+job_df = job_df.iloc[0:1]
 job_df
+
 
 #%%
 import openeo
