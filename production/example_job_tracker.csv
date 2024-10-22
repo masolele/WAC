@@ -1,3 +1,0 @@
-geometry,start_date,end_date,west,east,north,south,crs,executor_memory,executor_memoryOverhead,python_memory,status,id,start_time,running_start_time,cpu,memory,duration,backend_name
-"0    POLYGON ((-55.7915 4.76843, -55.73407 4.76831,...
-Name: geometry, dtype: geometry",2024-01-01,2024-12-31,-55.79161839924414,-55.73407499087059,4.7684349818144725,4.720295428976855,EPSG:4326,2GB,512MB,1GB,running,j-241022d1972647a68417a04ca14f1079,2024-10-22T08:03:47Z,2024-10-22T08:05:03Z,,,,cdse
