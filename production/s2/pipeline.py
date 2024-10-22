@@ -1,19 +1,16 @@
-#TODO include BAP
+#TODO include BAP?
 
 import geopandas as gpd
-import pyproj
 import openeo
 from helper.eo_utils import compute_yearly_s2features_and_monthly_s2composites
 from helper.jobmanager_utils import build_job_options
 from helper.scl_preprocessing import compute_scl_aux
-from helper.jobmanager_utils import calculate_month_difference
 
 """
 Processes Sentinel-2 data by applying a cloud mask using SCL bands and computes yearly features 
 and monthly composites for the given temporal and spatial extent.
 
 """
-
 
 MAX_CLOUD_COVER = 70
 
@@ -38,11 +35,8 @@ def start_job(
                       'south': float(row.south),
                      }
     
-    print(spatial_extent)
     
     temporal_extent = [str(row.start_date), str(row.end_date)]
-
-    print(temporal_extent)
 
     # build the job options from the dataframe
     job_options = build_job_options(row)
@@ -77,31 +71,25 @@ def start_job(
     s2_masked = s2.mask(scl_mask)
     
 
-    """
-    # Step 5: Calculate the number of months between the start and end dates
-    nb_of_months = calculate_month_difference(temporal_extent[0], temporal_extent[1])
-    
-    # Step 6: Compute yearly features and monthly composites
+    # Step 5: Compute yearly features and monthly composites
     merged_features = compute_yearly_s2features_and_monthly_s2composites(
-        s2_datacube=s2_masked,
-        nb_of_months=nb_of_months,
+        s2_datacube=s2_masked
     )
     
-    # Step 7: Ensure the output is in int16 range
+    
+    # Step 6: Ensure the output is in int16 range
     result_datacube = merged_features.linear_scale_range(
         -32_766, 32_766, -32_766, 32_766
     )
 
-    """
 
     save_result_options = {
         # TODO change the filename_prefix to the correct format, extra variables can be added in the job_db and used here
         "filename_prefix": f"WAC_S2",
     }
 
-
-    save_datacube = s2_masked.save_result(
-        format="GTiff",
+    save_datacube = result_datacube.save_result(
+        format="netCDF",
         options=save_result_options,
     )
     

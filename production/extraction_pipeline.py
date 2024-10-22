@@ -8,8 +8,7 @@ file_path = r"C:\Git_projects\WAC\production\resources\Land_use_Roads_tile.shp"
 
 # Example of how to use it with a config
 config = {
-    'start_date': '2024-01-01',
-    'end_date': '2024-12-31',
+    'start_date': '2020-01-01',
     'executor_memory': '2GB',
     'executor_memoryOverhead': '512MB',
     'python_memory': '1GB'
@@ -39,19 +38,11 @@ manager.add_backend("cdse", connection=connection, parallel_jobs=10)
 manager.run_jobs(df=job_df, start_job=start_job, job_db=job_tracker)
 
 #%%
-import rasterio
-import rasterio.plot
+import xarray as xr
 
 
-path_to_file = "./job_j-241021b4f95140768db20e13f850882e/WAC_S2_.tif"
+path_to_file = "./job_j-241022e91b0042e2a4fe85b45f70d5ec/WAC_S2.nc"
 
-with rasterio.open(path_to_file) as dataset:
-    width = dataset.width  # Number of columns (pixels wide)
-    height = dataset.height  # Number of rows (pixels high)
-    
-    print(f"Width: {width} pixels")
-    print(f"Height: {height} pixels")
-    rasterio.plot.show(dataset)
+test = xr.open_dataset(path_to_file)
 
-
-
+test

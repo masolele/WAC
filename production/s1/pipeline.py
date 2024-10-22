@@ -20,22 +20,23 @@ def start_job(
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
-        - location_id
-        - original job bounds
-        - original job crs
-        - spatial_extent
+        - geometry
         - temporal_extent
+        - original_extent
         - executor_memory
         - executor_memoryOverhead
         - python_memory
-        - export_workspace #TODO not applicable just yet: require to set up WAC STR storage
-        - asset_per_band 
     """
-    print(f"Starting job for \n{row}")
 
     # Get the spatial extent
-    spatial_extent = ast.literal_eval(row.spatial_extent)
-    temporal_extent = ast.literal_eval(row.temporal_extent)
+    spatial_extent = {'west': float(row.west),
+                      'east': float(row.east),
+                      'north': float(row.north),
+                      'south': float(row.south),
+                     }
+    
+    
+    temporal_extent = [str(row.start_date), str(row.end_date)]
 
     # build the job options from the dataframe
     job_options = build_job_options(row)
@@ -51,30 +52,29 @@ def start_job(
         process=divide_bands, dimension="bands"
     ).rename_labels(dimension="bands", target=["VV", "VH", "VH/VV"])
 
-    stats = compute_percentiles(s1_with_ratio)
+    result_datacube = compute_percentiles(s1_with_ratio)
 
 
     save_result_options = {
-        "filename_prefix": f"wac-s1-{row.location_id}",
+        # TODO change the filename_prefix to the correct format, extra variables can be added in the job_db and used here
+        "filename_prefix": f"WAC_S1",
     }
-    if "asset_per_band" in row and row.asset_per_band:
-        save_result_options["separate_asset_per_band"] = True
 
-    result_datacube = stats.save_result(
-        format="GTiff",
+    save_datacube = result_datacube.save_result(
+        format="netCDF",
         options=save_result_options,
     )
-
+    
     # Create the job
-    job = result_datacube.create_job(
-        title=f"WAC S1 - {row.location_id}",
+    job = save_datacube.create_job(
+        title=f"LCFM S1 - {row.id}",
         description=str(row),
         job_options=job_options
     )
+
     print(
         f"Starting Job: {job.job_id} for \nspatial extent: \n{spatial_extent} \ntemporal extent: \n{temporal_extent} \nwith options \n{job_options}"
     )
-    return job
 
 
 def divide_bands(bands):

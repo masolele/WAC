@@ -1,7 +1,9 @@
 import pandas as pd
 import datetime
 import geopandas as gpd
-
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from openeo_gfmap.manager.job_splitters import split_job_hex
 
 # Function to conditionally build the job_options dictionary
 def build_job_options(row):
@@ -21,29 +23,30 @@ def build_job_options(row):
     
     return job_options
 
-def calculate_month_difference(start_date_str, end_date_str):
-    """
-    Calculate the number of months between two dates.
-    
-    Args:
-    start_date_str (str): The start date as a string in "YYYY-MM-DD" format.
-    end_date_str (str): The end date as a string in "YYYY-MM-DD" format.
 
-    Returns:
-    int: The number of months between the two dates.
+def calculate_end_date(start_date: str) -> str:
+    """Calculate the end date exactly 12 months after the start date.
+    
+    Parameters
+    ----------
+    start_date : str
+        The start date in the format 'YYYY-MM-DD'.
+    
+    Returns
+    -------
+    end_date : str
+        The end date, exactly 12 months after the start date, in the format 'YYYY-MM-DD'.
     """
-    # Convert the date strings to datetime objects
-    startdate = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
-    enddate = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
+    try:
+        start_date_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("start_date must be in the format YYYY-MM-DD")
+
+    # Calculate end date (12 months after start date)
+    end_date_dt = start_date_dt + relativedelta(months=12)
     
-    # Calculate the year and month difference
-    year_diff = enddate.year - startdate.year
-    month_diff = enddate.month - startdate.month
-    
-    # Total number of months
-    total_months = year_diff * 12 + month_diff
-    
-    return total_months
+    # Return end date as string in 'YYYY-MM-DD' format
+    return end_date_dt.strftime("%Y-%m-%d")
 
 
 def create_job_dataframe(
@@ -59,19 +62,27 @@ def create_job_dataframe(
         'executor_memory', 'executor_memoryOverhead', 'python_memory'
     ]
 
-        # Split jobs based on H3 hexagons (adjust as needed for specific grid)
+    # Split jobs based on H3 hexagons (adjust as needed for specific grid)
     split_jobs = split_job_hex(input_geoms, max_points=max_points)
     
     
-    # Use values from the config for time and memory settings
+    # Get start and end date for full year
     start_date = config['start_date']
-    end_date = config['end_date']
+    
+    if not start_date:
+        raise ValueError("Config must contain a 'start_date' field in the format YYYY-MM-DD")
+
+    # Use the new function to calculate the end date
+    end_date = calculate_end_date(start_date)
+
+
+    #get addiitional values
     executor_memory = config['executor_memory']
     executor_memoryOverhead = config['executor_memoryOverhead']
     python_memory = config['python_memory']
     crs = input_geoms.crs
 
-    # create patches for each geometry and append them to the dataframe
+    # append the information row wise
     rows = []
     for job in split_jobs:
         # Calculate bounding box
@@ -90,6 +101,9 @@ def create_job_dataframe(
     
     # Create the final DataFrame
     return pd.DataFrame(rows)
+
+
+
 
 
 
