@@ -26,13 +26,11 @@ def start_job(
     :param row: The row containing the job paramters. it needs the following columns:
         - geometry
         - temporal_extent
-        - nb_patches
         - original_extent
         - executor_memory
         - executor_memoryOverhead
         - python_memory
-        - export_workspace #TODO not applicable just yet: require to set up WAC STR storage
-        - asset_per_band 
+
     """
     spatial_extent = {'west': float(row.west),
                       'east': float(row.east),
@@ -40,7 +38,11 @@ def start_job(
                       'south': float(row.south),
                      }
     
+    print(spatial_extent)
+    
     temporal_extent = [str(row.start_date), str(row.end_date)]
+
+    print(temporal_extent)
 
     # build the job options from the dataframe
     job_options = build_job_options(row)
@@ -74,6 +76,8 @@ def start_job(
     # Step 4: Apply the cloud mask to the Sentinel-2 data
     s2_masked = s2.mask(scl_mask)
     
+
+    """
     # Step 5: Calculate the number of months between the start and end dates
     nb_of_months = calculate_month_difference(temporal_extent[0], temporal_extent[1])
     
@@ -84,24 +88,25 @@ def start_job(
     )
     
     # Step 7: Ensure the output is in int16 range
-    merged_features = merged_features.linear_scale_range(
+    result_datacube = merged_features.linear_scale_range(
         -32_766, 32_766, -32_766, 32_766
     )
 
+    """
+
     save_result_options = {
         # TODO change the filename_prefix to the correct format, extra variables can be added in the job_db and used here
-        "filename_prefix": f"WAC_S2_{row.id}",
+        "filename_prefix": f"WAC_S2",
     }
-    if "asset_per_band" in row and row.asset_per_band:
-        save_result_options["separate_asset_per_band"] = True
 
-    result_datacube = merged_features.save_result(
+
+    save_datacube = s2_masked.save_result(
         format="GTiff",
         options=save_result_options,
     )
     
     # Create the job
-    job = result_datacube.create_job(
+    job = save_datacube.create_job(
         title=f"LCFM S2 - {row.id}",
         description=str(row),
         job_options=job_options

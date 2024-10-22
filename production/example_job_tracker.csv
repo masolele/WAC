@@ -1,5 +1,3 @@
-geometry,start_date,end_date,west,east,north,south,crs,nb_patches,executor_memory,executor_memoryOverhead,python_memory,export_workspace,asset_per_band,status,id,start_time,running_start_time,cpu,memory,duration,backend_name
+geometry,start_date,end_date,west,east,north,south,crs,executor_memory,executor_memoryOverhead,python_memory,status,id,start_time,running_start_time,cpu,memory,duration,backend_name
 "0    POLYGON ((-55.7915 4.76843, -55.73407 4.76831,...
-Name: geometry, dtype: geometry",2022-01-01,2022-12-31,-55.79161839924414,-55.73407499087059,4.7684349818144725,4.720295428976855,EPSG:4326,1,2GB,512MB,1GB,,,error,j-24102149962644bb83398e67b22be120,2024-10-21T18:21:47Z,2024-10-21T18:23:21Z,2506.11705917 cpu-seconds,13319149.30669643 mb-seconds,408 seconds,cdse
-"0    POLYGON ((112.17218 1.86624, 112.17215 1.89193...
-Name: geometry, dtype: geometry",2022-01-01,2022-12-31,112.17214809141484,112.20219645848957,1.8919311452612884,1.8662436744022044,EPSG:4326,1,2GB,512MB,1GB,,,error,j-241021b501e4423da0795b1096a689a9,2024-10-21T18:22:04Z,2024-10-21T18:23:21Z,983.3513879009997 cpu-seconds,7406011.65234375 mb-seconds,270 seconds,cdse
+Name: geometry, dtype: geometry",2024-01-01,2024-12-31,-55.79161839924414,-55.73407499087059,4.7684349818144725,4.720295428976855,EPSG:4326,2GB,512MB,1GB,running,j-241022d1972647a68417a04ca14f1079,2024-10-22T08:03:47Z,2024-10-22T08:05:03Z,,,,cdse
