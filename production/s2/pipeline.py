@@ -21,12 +21,8 @@ def start_job(
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
-        - geometry
-        - temporal_extent
-        - original_extent
-        - executor_memory
-        - executor_memoryOverhead
-        - python_memory
+        'geometry', 'start_date', 'end_date', 'west', 'east', 'north', 'south', 'crs',
+        'executor_memory', 'executor_memoryOverhead', 'python_memory'
 
     """
     spatial_extent = {'west': float(row.west),
@@ -34,7 +30,6 @@ def start_job(
                       'north': float(row.north),
                       'south': float(row.south),
                      }
-    
     
     temporal_extent = [str(row.start_date), str(row.end_date)]
 
@@ -89,7 +84,7 @@ def start_job(
     }
 
     save_datacube = result_datacube.save_result(
-        format="netCDF",
+        format="GTiff",
         options=save_result_options,
     )
     
