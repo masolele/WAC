@@ -1,4 +1,3 @@
-import ast
 import geopandas as gpd
 import openeo
 from helper.jobmanager_utils import build_job_options
@@ -15,8 +14,6 @@ Limitations:
     - This function do not support fetching points or polygons, but only
       tiles. #TODO how so?
 
-
-
 """
 
 def start_job(
@@ -26,22 +23,17 @@ def start_job(
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
-        - location_id
-        - original job bounds
-        - original job crs
-        - spatial_extent
-        - temporal_extent
-        - executor_memory
-        - executor_memoryOverhead
-        - python_memory
-        - export_workspace #TODO not applicable just yet: require to set up WAC STR storage
-        - asset_per_band 
-    """
-    print(f"Starting job for \n{row}")
+        'geometry', 'start_date', 'end_date', 'west', 'east', 'north', 'south', 'crs',
+        'executor_memory', 'executor_memoryOverhead', 'python_memory'
 
-    # Get the spatial extent
-    spatial_extent = ast.literal_eval(row.spatial_extent)
-    temporal_extent = ast.literal_eval(row.temporal_extent)
+    """
+    spatial_extent = {'west': float(row.west),
+                      'east': float(row.east),
+                      'north': float(row.north),
+                      'south': float(row.south),
+                     }
+    
+    temporal_extent = [str(row.start_date), str(row.end_date)]
 
     # Monthly composited METEO data
     cube = connection.load_stac(
@@ -61,7 +53,7 @@ def start_job(
     job_options = build_job_options(row)
 
     save_result_options = {
-        "filename_prefix": f"wac-DEM-{row.location_id}",
+        "filename_prefix": f"wac-AGERA5",
     }
     if "asset_per_band" in row and row.asset_per_band:
         save_result_options["separate_asset_per_band"] = True
@@ -73,7 +65,7 @@ def start_job(
 
     # Create the job
     job = result_datacube.create_job(
-        title=f"WAC AGERA6 - {row.location_id}",
+        title=f"WAC AGERA5",
         description=str(row),
         job_options=job_options
     )

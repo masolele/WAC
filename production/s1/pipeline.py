@@ -20,12 +20,8 @@ def start_job(
     Create a job for the given row.
 
     :param row: The row containing the job paramters. it needs the following columns:
-        - geometry
-        - temporal_extent
-        - original_extent
-        - executor_memory
-        - executor_memoryOverhead
-        - python_memory
+        'geometry', 'start_date', 'end_date', 'west', 'east', 'north', 'south', 'crs',
+        'executor_memory', 'executor_memoryOverhead', 'python_memory'
     """
 
     # Get the spatial extent
@@ -48,6 +44,7 @@ def start_job(
         bands=["VV", "VH"],
     )
 
+    # not feaibile on large fields
     s1_with_ratio = s1.apply_dimension(
         process=divide_bands, dimension="bands"
     ).rename_labels(dimension="bands", target=["VV", "VH", "VH/VV"])
@@ -61,7 +58,7 @@ def start_job(
     }
 
     save_datacube = result_datacube.save_result(
-        format="netCDF",
+        format="GTiff",
         options=save_result_options,
     )
     
@@ -75,6 +72,8 @@ def start_job(
     print(
         f"Starting Job: {job.job_id} for \nspatial extent: \n{spatial_extent} \ntemporal extent: \n{temporal_extent} \nwith options \n{job_options}"
     )
+
+    return job
 
 
 def divide_bands(bands):
