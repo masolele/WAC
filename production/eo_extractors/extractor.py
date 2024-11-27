@@ -17,26 +17,31 @@ def divide_vv_vh_ratio(bands):
     return eop.array_append(bands, eop.divide(vh, vv))
 
 # --- Extractor Functions ---
-def extract_agera5(connection: openeo.Connection, temporal_extent, resolution):
+def extract_agera5(connection: openeo.Connection, temporal_extent):
     """
     Load AGERA5 climate data for the specified temporal extent.
     """
-    return connection.load_stac(
+    cube = connection.load_stac(
         "https://s3.waw3-1.cloudferro.com/swift/v1/agera/stac/collection.json",
         temporal_extent=temporal_extent,
         bands=["precipitation-flux", "temperature-mean"],
-    ).resample_spatial(resolution=resolution)
+    )
+    return cube
 
-def extract_dem(connection: openeo.Connection, resolution):
+
+def extract_dem(connection: openeo.Connection):
     """
     Load and process DEM data.
     """
-    return connection.load_collection(
+    cube =  connection.load_collection(
         collection_id="COPERNICUS_30",
         bands=["DEM"]
-    ).resample_spatial(resolution=resolution).max_time()
+    ).max_time()
 
-def extract_s1(connection: openeo.Connection, temporal_extent, resolution):
+    return cube
+
+
+def extract_s1(connection: openeo.Connection, temporal_extent):
     """
     Load and process Sentinel-1 SAR data.
     """
@@ -44,20 +49,12 @@ def extract_s1(connection: openeo.Connection, temporal_extent, resolution):
         "SENTINEL1_GLOBAL_MOSAICS",
         temporal_extent=temporal_extent,
         bands=["VV", "VH"]
-    ).resample_spatial(resolution=resolution)
-
-    # Add VH/VV band and interpolate missing time values
-    cube = cube.apply_dimension(
-        process=divide_vv_vh_ratio, dimension="bands"
-    ).rename_labels(dimension="bands", target=["VV", "VH", "VH/VV"])
-
-    cube = cube.apply_dimension(
-        dimension="t", process="array_interpolate_linear"
     )
 
     return compute_percentiles(cube)
 
-def extract_s2(connection: openeo.Connection, temporal_extent, resolution, max_cloud_cover=75):
+#TODO multi resolution
+def extract_s2(connection: openeo.Connection, temporal_extent, max_cloud_cover=75):
     """
     Load and process Sentinel-2 data, applying cloud masking and temporal aggregation.
     """
@@ -67,7 +64,8 @@ def extract_s2(connection: openeo.Connection, temporal_extent, resolution, max_c
         temporal_extent=temporal_extent,
         bands=["SCL"],
         max_cloud_cover=max_cloud_cover
-    ).resample_spatial(resolution=resolution)
+    )
+
     mask = scl.process("to_scl_dilation_mask", data=scl)
 
     # Load and mask Sentinel-2 data
@@ -76,7 +74,7 @@ def extract_s2(connection: openeo.Connection, temporal_extent, resolution, max_c
         temporal_extent=temporal_extent,
         bands=["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"],
         max_cloud_cover=max_cloud_cover
-    ).resample_spatial(resolution=resolution).mask(mask)
+    ).mask(mask)
 
     # Aggregate monthly and interpolate missing values
     cube = cube.aggregate_temporal_period(period="month", reducer="mean")
@@ -84,8 +82,9 @@ def extract_s2(connection: openeo.Connection, temporal_extent, resolution, max_c
 
     return compute_percentiles(cube)
 
+
 #TODO; integrate
-def extract_s2_BAP(connection: openeo.Connection, temporal_extent, area, resolution, max_cloud_cover=75):
+def extract_s2_BAP(connection: openeo.Connection, temporal_extent, area, resolution=20, max_cloud_cover=75):
 
     scl = connection.load_collection(
         "SENTINEL2_L2A",
@@ -133,40 +132,48 @@ def wac_extraction_job(row: pd.Series, connection: openeo.Connection, **kwargs) 
     """
     Create and submit a processing job for the given GeoDataFrame row.
     """
+    
     temporal_extent = row["temporal_extent"]
-    crs = row["crs"]
-    resolution = int(row["resolution"])
     geometry = geojson.loads(row["geometry"])
-
+    crs = row.crs
 
     # Upload geometry as Parquet file
     features = gpd.GeoDataFrame.from_features(geometry).set_crs(crs)
     spatial_filter_url = upload_geoparquet_file(features, connection)
 
-    # Extract data cubes
-    s1_cube = extract_s1(connection, temporal_extent, resolution)
-    s2_cube = extract_s2(connection, temporal_extent, resolution)
-    agera_cube = extract_agera5(connection, temporal_extent, resolution)
-    dem_cube = extract_dem(connection, resolution)
-
-    # Merge all data cubes
-    result_cube = (
-        s2_cube.merge_cubes(s1_cube)
-               .merge_cubes(agera_cube)
-               .merge_cubes(dem_cube)
-    )
-
-
-    # Apply spatial filter
-    result_cube = s2_cube.filter_spatial(
+    # Extract S2
+    s2_cube = extract_s2(connection, temporal_extent).filter_spatial(
         connection.load_url(spatial_filter_url, format="Parquet")
     )
 
+    # add S1
+    s1_cube = extract_s1(connection, temporal_extent).filter_spatial(
+        connection.load_url(spatial_filter_url, format="Parquet")
+    )
+    
+    result_cube = s2_cube.merge_cubes(s1_cube)
+
+    # resample and add DEM
+    dem_cube = extract_dem(connection).filter_spatial(
+        connection.load_url(spatial_filter_url, format="Parquet")
+    )
+    dem_cube = dem_cube.resample_spatial(resolution = 10, projection = crs, method =  'bilineair')
+
+    result_cube = result_cube.merge_cubes(dem_cube)
+
+    # resample and add AGERA5
+    agera_cube = extract_agera5(connection, temporal_extent).filter_spatial(
+        connection.load_url(spatial_filter_url, format="Parquet")
+    )
+    agera_cube = agera_cube.resample_spatial(resolution = 10, projection = crs, method = 'bilineair')
+ 
+    result_cube = result_cube.merge_cubes(agera_cube)
+
+
     job = result_cube.create_job(
-                title = 'wac_extraction_job',
-                out_format="NetCDF",
-                filename_prefix = "wac"
-        )
+        format="NetCDF",
+        sample_by_feature = True,
+    )
 
     return job
 

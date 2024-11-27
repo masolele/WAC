@@ -115,7 +115,6 @@ def aggregate_BAP_scores(dtc_score: openeo.DataCube,
     Returns:
         DataCube: Aggregated BAP score data cube.
     """
-    _log.info(f'aggregating rank score')
     # Aggregate scores
     score = (weights[0] * dtc_score +
              weights[1] * date_score +
