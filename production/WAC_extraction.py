@@ -14,11 +14,11 @@ from helper.eo_utils import (
 file_path = Path(r"C:\Git_projects\WAC\production\resources\Land_use_Roads_tile.shp")
 
 # Parameters for processing
-patch_size = 128          # Size of patches in pixels
+patch_size = 64          # Size of patches in pixels
 resolution = 10.0         # Alignment resolution in meters
-start_date = "2020-01-01" # Temporal extent start date
+start_date = "2023-01-01" # Temporal extent start date
 nb_months = 3             # Number of months for the temporal extent
-max_points = 10            # Maximum points per job for splitting
+max_points = 1            # Maximum points per job for splitting
 grid_resolution = 3       # H3 index resolution
 
 # Load input data (GeoDataFrame)
@@ -47,12 +47,11 @@ job_dataframe
 #%%
 
 job_dataframe = job_dataframe[0:1]
-job_dataframe
 
 #%%
 
 import openeo
-from openeo.extra.job_management import MultiBackendJobManager, ParquetJobDatabase
+from openeo.extra.job_management import MultiBackendJobManager, CsvJobDatabase
 
 # Authenticate and add the backend
 connection = openeo.connect(url="openeo.dataspace.copernicus.eu").authenticate_oidc()
@@ -61,8 +60,8 @@ connection = openeo.connect(url="openeo.dataspace.copernicus.eu").authenticate_o
 manager = MultiBackendJobManager()
 manager.add_backend("cdse", connection=connection, parallel_jobs=2)
 
-job_tracker = 'job_tracker.parquet'
-job_db = ParquetJobDatabase(path=job_tracker)
+job_tracker = 'job_tracker.csv'
+job_db = CsvJobDatabase(path=job_tracker)
 if not job_db.exists():
     df = manager._normalize_df(job_dataframe)
     job_db.persist(df)
@@ -78,22 +77,29 @@ manager.run_jobs(start_job=wac_extraction_job, job_db=job_db)
 
 import rasterio
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Path to the GeoTIFF file
-file_path = "C:\Git_projects\WAC\production\job_j-24112614191f436ebbccc311ae84a124\wac_2020-01-01Z_0.tif"
+file_path = "job_j-24112748f81e4c55a1af3532f87feaf1\openEO_2023-03-01Z_0.tif"
 
-# Open and plot the GeoTIFF
+# Open and process the GeoTIFF
 with rasterio.open(file_path) as dataset:
-    # Read the first band (assuming single-band or plot the first one in multi-band)
-    band1 = dataset.read(1)
+    # Read the first band
 
-    # Get basic characteristics
+    print("Band names:")
+
+    band1 = dataset.read(61)
+    
+    # Convert to NumPy array and get its shape
+    array = np.array(band1)
+    print(f"Array shape: {array.shape}")
+    
+    # Additional details
     print(f"Width: {dataset.width}")
     print(f"Height: {dataset.height}")
-    
     print(f"Number of bands: {dataset.count}")
     print(f"Data type(s): {dataset.dtypes}")
-
+    
     # Plot the data
     plt.figure(figsize=(10, 8))
     plt.imshow(band1, cmap="gray")

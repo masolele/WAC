@@ -41,6 +41,26 @@ def compute_percentiles(base_features: openeo.DataCube) -> openeo.DataCube:
     ]
     return stats.rename_labels("bands", all_bands)
 
+def compute_statistics(base_features):
+    """
+    Computes  MEAN, STDDEV, MIN, P25, MEDIAN, P75, MAX over a datacube.
+    """
+    def computeStats(input_timeseries):
+        result = openeo.processes.array_concat(
+            input_timeseries.mean(),
+            input_timeseries.sd()
+        )
+        result = openeo.processes.array_concat(result, input_timeseries.min())
+        result = openeo.processes.array_concat(result, input_timeseries.quantiles(probabilities=[0.25]))
+        result = openeo.processes.array_concat(result, input_timeseries.median())
+        result = openeo.processes.array_concat(result, input_timeseries.quantiles(probabilities=[0.75]))
+        result = openeo.processes.array_concat(result, input_timeseries.max())
+        return result
+    
+    stats = base_features.apply_dimension(dimension='t', target_dimension='bands', process=computeStats)
+    all_bands = [band + "_" + stat for band in base_features.metadata.band_names for stat in ["mean", "stddev", "min", "p25", "median", "p75", "max"]]
+    return stats.rename_labels('bands', all_bands)
+
 
 # Patch Creation Functions
 def create_aligned_patches(
@@ -149,11 +169,10 @@ def create_job_dataframe(split_jobs: List[gpd.GeoDataFrame]) -> pd.DataFrame:
         job_data.append({
             "temporal_extent": job.temporal_extent.iloc[0],
             "geometry": job.to_json(),
-            "resolution": int(job.resolution.iloc[0]),
             "s2_tile": job.tile.iloc[0] if "tile" in job.columns else None,
             "h3index": job.h3index.iloc[0] if "h3index" in job.columns else None,
             "crs": job.crs.to_string(),
-            "area": job.area.iloc[0],
+            "resolution": job.resolution.iloc[0],
             "feature_count": len(job),
         })
 
