@@ -106,11 +106,14 @@ def create_aligned_patches(
     patches_gdf = gpd.GeoDataFrame(
         {
             "geometry": patches,
-            "area": [patch.area for patch in patches],
             "centroid_lat": [lat for lat, _ in centroids_latlon],
             "centroid_lon": [lon for _, lon in centroids_latlon],
             "temporal_extent": [compute_temporal_extent(start_date, duration_months)] * len(patches),
             "resolution": [resolution] * len(patches),
+            "id": [
+            f"patch_lat_{str(lat).replace('.', '_')}_lon_{str(lon).replace('.', '_')}" 
+            for lat, lon in centroids_latlon
+        ],
         },
         crs=utm_crs
     )

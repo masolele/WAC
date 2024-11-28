@@ -18,7 +18,7 @@ patch_size = 64          # Size of patches in pixels
 resolution = 10.0         # Alignment resolution in meters
 start_date = "2023-01-01" # Temporal extent start date
 nb_months = 3             # Number of months for the temporal extent
-max_points = 1            # Maximum points per job for splitting
+max_points = 10           # Maximum points per job for splitting
 grid_resolution = 3       # H3 index resolution
 
 # Load input data (GeoDataFrame)
@@ -44,9 +44,7 @@ split_jobs = process_split_jobs(
 job_dataframe = create_job_dataframe(split_jobs)
 job_dataframe
 
-#%%
 
-job_dataframe = job_dataframe[0:1]
 
 #%%
 
@@ -75,36 +73,7 @@ manager.run_jobs(start_job=wac_extraction_job, job_db=job_db)
 
 #%%
 
-import rasterio
-import matplotlib.pyplot as plt
-import numpy as np
+import xarray as xr
 
-# Path to the GeoTIFF file
-file_path = "job_j-24112748f81e4c55a1af3532f87feaf1\openEO_2023-03-01Z_0.tif"
-
-# Open and process the GeoTIFF
-with rasterio.open(file_path) as dataset:
-    # Read the first band
-
-    print("Band names:")
-
-    band1 = dataset.read(61)
-    
-    # Convert to NumPy array and get its shape
-    array = np.array(band1)
-    print(f"Array shape: {array.shape}")
-    
-    # Additional details
-    print(f"Width: {dataset.width}")
-    print(f"Height: {dataset.height}")
-    print(f"Number of bands: {dataset.count}")
-    print(f"Data type(s): {dataset.dtypes}")
-    
-    # Plot the data
-    plt.figure(figsize=(10, 8))
-    plt.imshow(band1, cmap="gray")
-    plt.colorbar(label="Pixel Value")
-    plt.title("GeoTIFF Visualization")
-    plt.xlabel("Column Index")
-    plt.ylabel("Row Index")
-    plt.show()
+test = xr.open_dataset('C:\Git_projects\WAC\production\job_j-241128b7868942158beedba998e07004\WAC_Extraction_patch_lat_-58_4559412373374_lon_-12_808285009665795.nc')
+test
