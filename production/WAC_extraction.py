@@ -14,11 +14,11 @@ from helper.eo_utils import (
 file_path = Path(r"C:\Git_projects\WAC\production\resources\Land_use_Roads_tile.shp")
 
 # Parameters for processing
-patch_size = 64          # Size of patches in pixels
+patch_size = 128          # Size of patches in pixels
 resolution = 10.0         # Alignment resolution in meters
 start_date = "2023-01-01" # Temporal extent start date
 nb_months = 3             # Number of months for the temporal extent
-max_points = 10           # Maximum points per job for splitting
+max_patches_per_job = 5           # Maximum points per job for splitting
 grid_resolution = 3       # H3 index resolution
 
 # Load input data (GeoDataFrame)
@@ -36,15 +36,16 @@ dataframes_by_crs = generate_patches_by_crs(
 # Step 2: Process the patches into split jobs with H3 indexing
 split_jobs = process_split_jobs(
     geodataframes=dataframes_by_crs,
-    max_points=max_points,
+    max_points=max_patches_per_job,
     grid_resolution=grid_resolution
 )
 
 # Step 3: Create a summary DataFrame for the split jobs
 job_dataframe = create_job_dataframe(split_jobs)
+
+
+job_dataframe = job_dataframe[0:10]
 job_dataframe
-
-
 
 #%%
 
@@ -75,5 +76,11 @@ manager.run_jobs(start_job=wac_extraction_job, job_db=job_db)
 
 import xarray as xr
 
-test = xr.open_dataset('C:\Git_projects\WAC\production\job_j-241128b7868942158beedba998e07004\WAC_Extraction_patch_lat_-58_4559412373374_lon_-12_808285009665795.nc')
+test = xr.open_dataset('C:\Git_projects\WAC\production\job_j-24121342bd8c472aa3c3802728dfd688\WAC_Extraction_patch_lat_-58_45304328104278_lon_-12_816979616669007.nc')
 test
+
+#%%
+
+import matplotlib.pyplot as plt
+test['B02'].isel(t=3).plot()
+plt.show()
