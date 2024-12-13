@@ -1,10 +1,10 @@
 import geojson
 import openeo
-import openeo.processes as eop
+import ast
 
 import geopandas as gpd
 import pandas as pd
-from helper.eo_utils import compute_statistics
+from helper.eo_utils import compute_percentiles, assign_max_band_label
 from helper.s3proxy_utils import upload_geoparquet_file
 
 # --- Utility Functions ---
@@ -32,6 +32,17 @@ def extract_agera5(connection: openeo.Connection, temporal_extent):
         temporal_extent=temporal_extent,
         bands=["precipitation-flux", "temperature-mean"],
     )
+
+    return cube
+
+def extract_biome(connection: openeo.Connection):
+    """
+    Load the biome information.
+    """
+    cube = connection.load_stac(
+        "https://stac.openeo.vito.be/collections/biomes",
+    )
+
     return cube
 
 
@@ -57,7 +68,7 @@ def extract_s1(connection: openeo.Connection, temporal_extent):
         bands=["VV", "VH"]
     )
 
-    return compute_statistics(cube)
+    return cube
 
 def extract_s2(connection: openeo.Connection, temporal_extent, max_cloud_cover=75):
     """
@@ -85,7 +96,8 @@ def extract_s2(connection: openeo.Connection, temporal_extent, max_cloud_cover=7
     cube = cube.aggregate_temporal_period(period="month", reducer="mean")
     cube = cube.apply_dimension(dimension="t", process="array_interpolate_linear")
 
-    return compute_statistics(cube)
+    return cube
+
 
 
 # --- Job Submission Function ---
@@ -93,7 +105,11 @@ def wac_extraction_job(row: pd.Series, connection: openeo.Connection, **kwargs) 
     """
     Create and submit a processing job for the given GeoDataFrame row.
     """
-    temporal_extent = row["temporal_extent"]
+
+    if isinstance(row["temporal_extent"], str):
+        temporal_extent = ast.literal_eval(temporal_extent)
+    else:
+        temporal_extent = row["temporal_extent"]
     spatial_filter_url = prepare_geometry(row, connection)
 
     # Load and process Sentinel-2
@@ -126,6 +142,16 @@ def wac_extraction_job(row: pd.Series, connection: openeo.Connection, **kwargs) 
         crs=row.crs,
     )
     result_cube = result_cube.merge_cubes(agera_cube)
+
+
+    # Add biome
+    biome = filter_and_resample(
+        extract_biome(connection),
+        connection.load_url(spatial_filter_url, format="Parquet"),
+        resolution=int(row.resolution),
+        crs=row.crs,
+    )
+    result_cube = result_cube.merge_cubes(biome)
 
     # Submit job
     return result_cube.create_job(
