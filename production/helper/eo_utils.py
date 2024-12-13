@@ -61,6 +61,31 @@ def compute_statistics(base_features):
     all_bands = [band + "_" + stat for band in base_features.metadata.band_names for stat in ["mean", "stddev", "min", "p25", "median", "p75", "max"]]
     return stats.rename_labels('bands', all_bands)
 
+def assign_max_band_label(stac_collection):
+    """
+    For a given STAC collection, assigns a numeric label (1, 2, 3, ...) to each pixel based on 
+    which band has the maximal value.
+
+    Args:
+        stac_collection: An openEO data cube representing the STAC collection with 13 bands.
+
+    Returns:
+        A data cube where each pixel contains a numeric label corresponding to the band index 
+        (1-based indexing) with the maximum value.
+    """
+    def max_band_label(pixel_values):
+        # Determine the index (1-based) of the maximum value across the bands for each pixel
+        return openeo.processes.array_find(pixel_values, openeo.processes.max(pixel_values)) + 1
+
+    # Apply the function across all bands, reducing the 'bands' dimension
+    labeled_result = stac_collection.reduce_dimension(
+        dimension="bands",
+        reducer=max_band_label
+    )
+
+    return labeled_result
+
+
 
 # Patch Creation Functions
 def create_aligned_patches(
