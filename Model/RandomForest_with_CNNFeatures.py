@@ -45,7 +45,7 @@ X_train = train_images
 y_train = train_masks
 y_train = np.expand_dims(y_train, axis=3)
 
-
+#This is based on binary classification, for multiclass change the activation to "softmax"
 activation = 'sigmoid'
 feature_extractor = Sequential()
 feature_extractor.add(Conv2D(32, 3, activation = activation, padding = 'same', input_shape = (SIZE, SIZE, 3)))
@@ -68,8 +68,7 @@ dataset['Label'] = Y
 print(dataset['Label'].unique())
 print(dataset['Label'].value_counts())
 
-##If we do not want to include pixels with value 0 
-##e.g. Sometimes unlabeled pixels may be given a value 0.
+##If we do not want to include pixels with value 0. In our reference data the unlabeled pixels have value 0.
 dataset = dataset[dataset['Label'] != 0]
 
 X_for_RF = dataset.drop(labels = ['Label'], axis=1)
@@ -84,7 +83,7 @@ model = RandomForestClassifier(n_estimators = 50, random_state = 42)
 model.fit(X_for_RF, Y_for_RF) #For sklearn no one hot encoding
 
 
-filename = 'RF_model.sav'
+filename = 'RF_model_WAC.sav'
 pickle.dump(model, open(filename, 'wb'))
 
 loaded_model = pickle.load(open(filename, 'rb'))
