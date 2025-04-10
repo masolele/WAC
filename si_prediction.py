@@ -3,7 +3,7 @@ from keras.models import load_model
 import numpy as np
 from skimage import io
 # keep below line in script at ALL times
-from Unet_RES_Att_models_IV import Attention_UNetFusion3I_SentinelMLP
+from Unet_RES_Att_models_IV import Attention_UNetFusion3I_Sentinel2_Binary
 import matplotlib.pyplot as plt
 
 # Set environment variable to allow multiple OpenMP libraries to be loaded
