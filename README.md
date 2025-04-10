@@ -1,4 +1,4 @@
-# ComCrop ONNX Model Documentation
+# ComCrop Model Documentation
 
 This document describes the ONNX version of the ComCrop model, which is converted from the original TensorFlow model used for crop monitoring using OpenEO and deep learning.
 
