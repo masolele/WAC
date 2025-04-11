@@ -285,7 +285,7 @@ def Attention_UNetFusion3I_Sentinel2_Binary(input_shape, NUM_CLASSES=1, dropout_
     # 1*1 convolutional layers
     conv_final = layers.Conv2D(NUM_CLASSES, kernel_size=(1,1))(merge_data)
     conv_final = layers.BatchNormalization(axis=3)(conv_final)
-    conv_final = layers.Activation('sigmoid')(conv_final)  #Change to softmax for multichannel
+    conv_final = layers.Activation('sigmoid')(conv_final)  #Change to softmax for multiclass commodity crops
 
     # Model integration
     model = models.Model(inputs = inputs, outputs = conv_final, name="Attention_UNet_Fusion")
