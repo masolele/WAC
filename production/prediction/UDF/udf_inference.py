@@ -21,56 +21,71 @@ import onnxruntime as ort
 #os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
-@functools.lru_cache(maxsize=2)
+@functools.lru_cache(maxsize=1)
 def _load_ort_session(model_name: str) -> ort.InferenceSession:
     """Loads an ONNX model and returns a cached ONNX runtime session."""
     return ort.InferenceSession(f"onnx_models/{model_name}")
 
-def apply_ml(cube: xr.DataArray) -> xr.DataArray:
-    """Process the neighborhood/tile provided by openEO using the ONNX model."""
+def _preprocess(cube: xr.DataArray) -> np.ndarray:
+    """Reorder dimensions, extract values, and sanitize NaNs/Infs."""
+    reordered = cube.transpose("y", "x", "bands")
+    img = reordered.values.astype(np.float32)[None, ...]  # → (1, y, x, bands)
+    # Replace NaN/Inf so the model sees only finite numbers
+    img = np.nan_to_num(img, nan=0.0, posinf=1e6, neginf=-1e6) #TODO how was model trained for nans?
+    logger.info(f"Preprocessed input shape = {img.shape}")
+    return img, reordered.coords
 
-    cube = cube.transpose('y', 'x', 'bands')
-    logger.info(f"Inference Input data shape: {cube.shape}, dimensions: {cube.dims}")
+def _infer(session: ort.InferenceSession, input_name: str, img: np.ndarray) -> np.ndarray:
+    """Run ONNX inference and drop the batch dimension."""
+    raw = session.run(None, {input_name: img})[0]  # (1, y, x, new_bands)
+    pred = np.squeeze(raw, axis=0)                # → (y, x, new_bands)
+    logger.info(f"Raw ONNX output shape = {pred.shape}")
+    return pred
 
-    # TODO; remove?
-    band_names = cube.coords['bands'].values
-    for i, band_name in enumerate(band_names):
-        band_data = cube.values[:,:,i]
-        logger.info(f"Inference UDF  Band {i} ({band_name}): min={band_data.min():.6f}, max={band_data.max():.6f}, mean={band_data.mean():.6f}")
+def _postprocess(pred: np.ndarray, coords) -> xr.DataArray:
+    """Slice off unwanted bands, compute argmax, and rebuild DataArray."""
+    # Drop background band (assumes it's the first channel)
+    scores = pred[..., 1:]                        # → (y, x, bands-1)
+    # Mask any residual ±Inf (should be none) and NaNs
+    scores = np.where(np.isinf(scores), np.nan, scores)
+    classes = np.argmax(scores, axis=-1)          # → (y, x)
+    # Stack class + scores along 'bands'
+    out = np.concatenate([classes[..., None], scores], axis=-1)
+    y, x = coords["y"], coords["x"]
+    bands = np.arange(out.shape[-1])
+    return xr.DataArray(out, dims=("x", "y", "bands"),
+                        coords={"x": y, "u": x, "bands": bands})
 
-    #TODO do not hardcode model name
-    session = _load_ort_session("WAC_model_hansvrp.onnx")
+def apply_ml(cube: xr.DataArray, model_path: str = "WAC_model_hansvrp.onnx") -> xr.DataArray:
+    """
+    Process the tile provided by openEO using the ONNX model.
+    Splits work into preprocessing, inference, and postprocessing.
+    """
+    # Preprocess
+    img, coords = _preprocess(cube)
 
+    # Inference
+    session = _load_ort_session(model_path)
     input_name = session.get_inputs()[0].name
-    image_input = np.expand_dims(cube.values, axis=0).astype(np.float32) #TODO is the conversion to float needed
-    logger.info(f"Inference Model input shape: {image_input.shape}")
+    pred = _infer(session, input_name, img)
 
-    pred = session.run(None, {input_name: image_input})[0]
-    logger.info(f"Inference Model output shape: {pred.shape}")
-    
-    # take the prediction probabilities and set infitnity to nan
-    raw_pred = np.where(np.isinf(pred[0]), np.nan, pred[0])
-    pred_class = np.argmax(raw_pred, axis=-1) #TODO needed? doesn't the onnx model already return the class?
-
-    # Create output DataArray with the same coordinates
-    da = xr.DataArray(
-        pred_class,
-        dims=['y', 'x'],
-        coords={'y': cube.coords['y'], 'x': cube.coords['x']}
-    )
-
-    return da
+    # Postprocess
+    output = _postprocess(pred, coords)
+    logger.info(f"apply_ml returning DataArray with shape={output.shape}")
+    return output
 
 
 def apply_datacube(cube: xr.DataArray, context) -> xr.DataArray:
     """
-    Function that is called for each chunk of data that is processed.
-    The function name and arguments are defined by the UDF API.
-    
+    Apply ONNX model to each timestep independently in the datacube.
     """
-    logger.info(f"Apply Datacube Inference input data shape: {cube.shape}, dimensions: {cube.dims}")
+    logger.info(f"Inference, received data with shape: {cube.shape} and dims: {cube.dims}")
+    cube = cube.transpose('y', 'x', 'bands', 't')
 
-    # Apply the model for each timestep in the chunk
-    output_data = cube.groupby("t").apply(apply_ml)
-
-    return output_data
+    if 't' in cube.dims:
+        logger.info(f"Detected time dimension 't'. Applying model for each timestep.")
+        result = cube.groupby('t').map(apply_ml)
+        return result
+    else:
+        logger.info(f"No time dimension detected. Applying model once.")
+        return apply_ml(cube)
