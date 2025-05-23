@@ -111,64 +111,47 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     - Normalises VV, VH, DEM, lon, lat separately
     - Outputs a 15-band cube
     '''
-    logger.info(f"Received data with shape: {{original_data.shape}} and dims: {{original_data.dims}}")
+    cube = cube.transpose("bands", "y", "x", "t")
+    logger.info(f"Received data with shape: {cube.shape} and dims: {cube.dims}")
     
     #TODO check if this occurs; if data is missing instead of throwing a value error we could also pad with nans?
-    reordered_data, band_indices = validate_and_reorder_bands(cube)
+    reordered, band_idx = validate_and_reorder_bands(cube)
 
     # Convert to numpy for operations
-    img_values = reordered_data.values
+    vals = reordered.values
     
-    # Normalize the first 9 bands (optical) as a single operation
-    optical_bands = [img_values[band_indices[b]] for b in EXPECTED_BANDS[:9]]
-    optical_bands_stack = np.stack(optical_bands, axis=0)
-    normalised_optical = norm_optical(optical_bands_stack)
-    
-    # Normalise individual bands
-    #TODO use standard openEO process for normalisation
-    ndvi_normalised = normalise_ndvi(img_values[band_indices["NDVI"]])
-    vv_normalised = normalise_vv(img_values[band_indices["VV"]])
-    vh_normalised = normalise_vh(img_values[band_indices["VH"]])
-    dem_normalised = normalise_altitude(img_values[band_indices["DEM"]])
-    lon_normalised = normalise_longitude(img_values[band_indices["lon"]])
-    lat_normalised = normalise_latitude(img_values[band_indices["lat"]])
-    
+     # 1) Optical stack: first 9 bands → (9, y, x, t)
+    optical = vals[:9, ...]
+    # reshape percentiles to (9,1,1,1) so they broadcast over y,x,t
+    mins = NORM_PERCENTILES[:, 0].reshape(9, 1, 1, 1)
+    scales = NORM_PERCENTILES[:, 1].reshape(9, 1, 1, 1)
+    # reuse your norm_optical logic, but on 4D
+    normed_opt = np.log(optical * 0.005 + 1)
+    normed_opt = (normed_opt - mins) / scales
+    normed_opt = np.exp(normed_opt * 5 - 1)
+    normed_opt = (normed_opt / (normed_opt + 1)).astype(np.float32)
 
-    # TODO; remove?
-    band_names = cube.coords['bands'].values
-    for i, band_name in enumerate(band_names):
-        band_data = cube.values[:,:,i]
-        logger.info(f"  Band {i} ({band_name}): min={band_data.min():.6f}, max={band_data.max():.6f}, mean={band_data.mean():.6f}")
-    
-    # Stack all bands together: 9 optical + NDVI + VV + VH + DEM + Lon + Lat = 15 bands
-    result_array = np.stack(
-        [
-            *normalised_optical,  # Unpack the 9 normalised optical bands
-            ndvi_normalised,
-            vv_normalised,
-            vh_normalised,
-            dem_normalised,
-            lon_normalised,
-            lat_normalised
-        ],
+    # 2) Per‐band scalar normalisations also just broadcast over t:
+    ndvi = normalise_ndvi(vals[band_idx["NDVI"], ...])
+    vv   = normalise_vv(vals[band_idx["VV"], ...])
+    vh   = normalise_vh(vals[band_idx["VH"], ...])
+    dem  = normalise_altitude(vals[band_idx["DEM"], ...])
+    lon  = normalise_longitude(vals[band_idx["lon"], ...])
+    lat  = normalise_latitude(vals[band_idx["lat"], ...])
+
+    # 3) Stack back into (15, y, x, t)
+    out = np.concatenate(
+        [normed_opt, ndvi[None], vv[None], vh[None], dem[None], lon[None], lat[None]],
         axis=0
     )
-    
 
-    # build DataArray with the same dims
-    da = xr.DataArray(
-        result_array,
-        dims=("bands", "y", "x"),
-        coords={
-            "bands": EXPECTED_BANDS,
-            # Here we *overwrite* the x/y coords to be the new geographic grid
-            "x": reordered_data.coords['x'],
-            "y": reordered_data.coords['y']
-        },
+    return xr.DataArray(
+        out,
+        dims=("bands", "y", "x", "t"),
+        coords={ **reordered.coords, "bands": EXPECTED_BANDS }
     )
 
 
-    return da
     
 
     

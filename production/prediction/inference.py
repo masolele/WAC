@@ -16,7 +16,7 @@ def inference_WAC(input_cube, patch_size = 32, overlap = 16):
     window_size = patch_size + 2 * overlap  # Should equal 64
     assert window_size == 64, f"Invalid window size: {window_size}. Must be 64 (patch + 2 * overlap)."
 
-    return input_cube.apply_neighborhood(
+    output =  input_cube.apply_neighborhood(
         process=udf_inference,
         size=[
             {'dimension': 'x', 'value': patch_size, 'unit': 'px'},
@@ -27,3 +27,5 @@ def inference_WAC(input_cube, patch_size = 32, overlap = 16):
             {'dimension': 'y', 'value': overlap, 'unit': 'px'},
         ]
     )
+    output = output.rename_labels(dimension="bands",target=['prediction'])
+    return output
