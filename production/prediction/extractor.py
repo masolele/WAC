@@ -1,11 +1,11 @@
 from openeo import UDF
 from pathlib import Path
+from datetime import datetime, timedelta
 
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
 UDF_DIR = BASE_DIR / 'UDF'
-
 
 
 def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs):
@@ -36,7 +36,7 @@ def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resol
 
     mask = scl.process('to_scl_dilation_mask', data=scl)
     s2 = s2.mask(mask)
-    return s2.reduce_dimension(dimension='t', reducer='mean')
+    return s2.aggregate_temporal_period(period = 'month', reducer = 'mean')
 
 
 def compute_ndvi(cube):
@@ -44,26 +44,36 @@ def compute_ndvi(cube):
     Compute NDVI and temporal-reduce if needed.
     """
     ndvi = cube.ndvi(red='B04', nir='B08').add_dimension('bands', 'NDVI', 'bands')
-    if ndvi.metadata.has_temporal_dimension():
-        ndvi = ndvi.reduce_dimension(dimension='t', reducer='mean')
     return ndvi
 
 
 def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
     """
     Load and process Sentinel-1 VV/VH global mosaics.
+
+    There is an issue with the sentinel1 Global mosaic due to wich the first observation is always 0
+
     """
+    orig_start = datetime.strptime(temporal_extent[0], "%Y-%m-%d")
+    extended_start = (orig_start - timedelta(days=1)).strftime("%Y-%m-%d")
+    extended_temporal = [extended_start, temporal_extent[1]]
+
+
     s1 = (
         conn.load_collection(
             'SENTINEL1_GLOBAL_MOSAICS',
-            temporal_extent=temporal_extent,
+            temporal_extent=extended_temporal,
             spatial_extent=spatial_extent,
             bands=['VV','VH']
         )
         .resample_spatial(resolution=resolution, projection=crs)
     )
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
-    return s1.reduce_dimension(dimension='t', reducer='mean')
+
+    #cut back to the original extent after processing
+    #s1 = s1.filter_temporal(temporal_extent[0], temporal_extent[1])
+
+    return s1
 
 
 def compute_latlon(sentinel2, spatial_extent, resolution, crs):
@@ -86,8 +96,7 @@ def compute_latlon(sentinel2, spatial_extent, resolution, crs):
         .resample_spatial(resolution=resolution, projection=crs)
         .rename_labels('bands', ['lon','lat'])
     )
-    if latlon.metadata.has_temporal_dimension():
-        latlon = latlon.reduce_dimension(dimension='t', reducer='mean')
+
     return latlon
 
 
@@ -118,11 +127,13 @@ def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, 
     dem = load_dem(conn, spatial_extent, resolution, crs)
 
     # Merge cubes
-    input_cube = s2.merge_cubes(ndvi).merge_cubes(s1).merge_cubes(dem).merge_cubes(latlon)
+    input_cube = s1.merge_cubes(s2).merge_cubes(ndvi).merge_cubes(dem).merge_cubes(latlon)
 
     # Normalize
     udf_norm = UDF.from_file(UDF_DIR / 'udf_normalize_input.py')
-    norm_cube = input_cube.apply(process=udf_norm)
+
+
+    norm_cube = input_cube.apply_dimension(process=udf_norm, dimension = 't')
 
     return norm_cube
 
