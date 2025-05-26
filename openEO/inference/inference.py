@@ -6,7 +6,7 @@ UDF_DIR = Path(__file__).parent.resolve() / 'UDF'
 udf_inference = UDF.from_file(UDF_DIR / 'udf_inference_kernel.py')
 
 #TODO automate patch_size
-def inference_WAC(input_cube, patch_size = 1000, overlap = 0):
+def inference_WAC(input_cube, patch_size = 64, overlap = 0):
     """
     Apply neighborhood inference UDF over input data cube using a sliding window.
 
