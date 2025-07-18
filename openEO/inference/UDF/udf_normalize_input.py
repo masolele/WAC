@@ -25,7 +25,9 @@ NORM_PERCENTILES = np.array([
 
 EXPECTED_BANDS = [
     "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B11", "B12",
-    "NDVI", "VV", "VH", "DEM", "lon", "lat"
+    "NDVI", "NDRE", "EVI",  # Vegetation indices
+    "VV", "VH",             # Radar
+    "DEM", "lon", "lat"     # Topography/coordinates
 ]
 
 # --- Normalization helpers ---
@@ -45,7 +47,7 @@ def normalise_latitude(raster: np.ndarray) -> np.ndarray:
 def normalise_altitude(raster: np.ndarray) -> np.ndarray:
     return np.clip((raster + 400) / 8400, 0, 1).astype(np.float32)
 
-def normalise_ndvi(raster: np.ndarray) -> np.ndarray:
+def normalise_vegetation(raster: np.ndarray) -> np.ndarray:
     return np.clip((raster + 1) / 2, 0, 1).astype(np.float32)
 
 def norm_optical(image: np.ndarray) -> np.ndarray:
@@ -94,7 +96,7 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     """
     Normalize input datacube for inference:
     - Optical bands (first 9): via log-transform then sigmoid-like scale
-    - Others (VV, VH, NDVI, DEM, lon, lat): via fixed min/max scalings
+    - Others (VV, VH, NDVI, NDRE, EVI, DEM, lon, lat): via fixed min/max scalings
 
     Args:
         cube (xr.DataArray): Input cube with dims (bands, y, x, t)
@@ -120,7 +122,9 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     normed_opt = (normed_opt / (normed_opt + 1)).astype(np.float32)
 
     # 2) Scalar band normalization
-    ndvi = normalise_ndvi(vals[band_idx["NDVI"], ...])
+    ndvi = normalise_vegetation(vals[band_idx["NDVI"], ...])
+    ndre = normalise_vegetation(vals[band_idx["NDRE"], ...])
+    evi = normalise_vegetation(vals[band_idx["EVI"], ...])
     vv   = normalise_vv(vals[band_idx["VV"], ...])
     vh   = normalise_vh(vals[band_idx["VH"], ...])
     dem  = normalise_altitude(vals[band_idx["DEM"], ...])
@@ -129,7 +133,7 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
 
     # 3) Concatenate all normalized bands
     output = np.concatenate(
-        [normed_opt, ndvi[None], vv[None], vh[None], dem[None], lon[None], lat[None]],
+        [normed_opt, ndvi[None], ndre[None], evi[None], vv[None], vh[None], dem[None], lon[None], lat[None]],
         axis=0
     )
 

@@ -5,6 +5,7 @@ import xarray as xr
 import logging
 from typing import Dict, Tuple
 
+
 # Setup logger
 def _setup_logging():
     logging.basicConfig(level=logging.INFO)
@@ -25,7 +26,6 @@ _NEG_INF_REPLACEMENT = -1e6
 def _load_ort_session(model_name: str) -> ort.InferenceSession:
     """Loads an ONNX model and returns a cached ONNX runtime session."""
     return ort.InferenceSession(f"onnx_models/{model_name}")
-
 
 def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, xr.Coordinate], np.ndarray]:
     """
@@ -73,29 +73,31 @@ def postprocess_output(
     Combine class predictions and probabilities into DataArray,
     restoring NaNs for originally invalid pixels.
     """
-    # Remove background (class 0), keep probabilities
-    scores = pred[..., 1:]
+    # Remove background class (class 0)
+    scores = pred[..., 1:].astype(np.float32)
 
-    # Mask any Inf residuals
-    scores = np.where(np.isinf(scores), np.nan, scores)
+    # Normalize probabilities across class axis
+    score_sums = np.sum(scores, axis=-1, keepdims=True)
+    normalized_scores = np.divide(
+        scores,
+        score_sums,
+        out=np.zeros_like(scores),
+        where=score_sums != 0
+    )
 
-    # Compute class index
-    classes = np.argmax(scores, axis=-1)
+    normalized_scores *= 100.0
 
-    # Stack class + scores
-    output_arr = np.concatenate([classes[..., None], scores], axis=-1)
-
-    # Restore any invalid pixel to NaN
+    # Restore invalid pixels as NaN
     invalid_any = np.any(mask_invalid, axis=-1)
-    output_arr[invalid_any] = np.nan
+    normalized_scores[invalid_any] = 1000 #TODO which value to set?
 
     # Build DataArray
     y_coords = coords["y"]
     x_coords = coords["x"]
-    band_coords = np.arange(output_arr.shape[-1])
+    band_coords = np.arange(normalized_scores.shape[-1])
 
     return xr.DataArray(
-        output_arr,
+        normalized_scores,
         dims=("y", "x", "bands"),
         coords={"y": y_coords, "x": x_coords, "bands": band_coords}
     )
@@ -112,6 +114,7 @@ def apply_model(
     session = _load_ort_session(model_path)
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
+    
     result = postprocess_output(raw_pred, coords, mask_invalid)
     logger.info(f"apply_model result shape={result.shape}")
     return result
