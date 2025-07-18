@@ -3,7 +3,8 @@ from openeo import UDF
 
 # Path to inference UDF
 UDF_DIR = Path(__file__).parent.resolve() / 'UDF'
-udf_inference = UDF.from_file(UDF_DIR / 'udf_inference_kernel.py')
+udf_inference = UDF.from_file(UDF_DIR / 'udf_inference_tiles.py')
+
 
 #TODO automate patch_size
 def inference_WAC(input_cube, patch_size = 64, overlap = 0):
@@ -26,4 +27,4 @@ def inference_WAC(input_cube, patch_size = 64, overlap = 0):
             {'dimension': 'y', 'value': overlap, 'unit': 'px'},
         ]
     )
-    return output.rename_labels(dimension = 'bands', target = ['prediction'])
+    return output

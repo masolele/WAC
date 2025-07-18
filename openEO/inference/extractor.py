@@ -1,3 +1,5 @@
+#TODO do normalisation in extractor instead of UDF
+
 from openeo import UDF
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -39,12 +41,30 @@ def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resol
     return s2.aggregate_temporal_period(period = 'month', reducer = 'mean')
 
 
-def compute_ndvi(cube):
+def compute_vegetation_indices(cube):
     """
-    Compute NDVI and temporal-reduce if needed.
+    Compute all required vegetation indices
     """
-    ndvi = cube.ndvi(red='B04', nir='B08').add_dimension('bands', 'NDVI', 'bands')
-    return ndvi
+    # NDVI
+    ndvi = cube.ndvi(red='B04', nir='B08')
+    
+    # NDRE: (NIR - RedEdge1)/(NIR + RedEdge1)
+    ndre = (cube.band('B08') - cube.band('B05')) / (cube.band('B08') + cube.band('B05'))
+    
+    # EVI: 2.5*(NIR - Red)/(NIR + 6*Red - 7.5*Blue + 1)
+    numerator = 2.5 * (cube.band('B08') - cube.band('B04'))
+    denominator = (
+        cube.band('B08') + 
+        6 * cube.band('B04') - 
+        7.5 * cube.band('B02') + 
+        1
+    )
+    evi = numerator / denominator
+    
+    # Add dimension labels
+    return ndvi.add_dimension('bands', 'NDVI', 'bands'), \
+           ndre.add_dimension('bands', 'NDRE', 'bands'), \
+           evi.add_dimension('bands', 'EVI', 'bands')
 
 
 def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
@@ -121,13 +141,22 @@ def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, 
     """
     # Load all sources
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
-    ndvi = compute_ndvi(s2)
+    ndvi, ndre, evi = compute_vegetation_indices(s2)
     s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
     latlon = compute_latlon(s2, spatial_extent, resolution,crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
 
     # Merge cubes
-    input_cube = s1.merge_cubes(s2).merge_cubes(ndvi).merge_cubes(dem).merge_cubes(latlon)
+    # Merge all components
+    input_cube = (
+        s2
+        .merge_cubes(s1)
+        .merge_cubes(ndvi)
+        .merge_cubes(ndre)
+        .merge_cubes(evi)
+        .merge_cubes(dem)
+        .merge_cubes(latlon)
+    )
 
     # Normalize
     udf_norm = UDF.from_file(UDF_DIR / 'udf_normalize_input.py')
