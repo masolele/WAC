@@ -3,7 +3,9 @@
 from openeo import UDF
 from pathlib import Path
 from datetime import datetime, timedelta
-from normalization import normalize_band
+from normalization import normalize_cube, BAND_ORDER
+
+
 
 
 
@@ -134,32 +136,15 @@ def load_dem(conn, spatial_extent, resolution, crs):
         dem = dem.reduce_dimension(dimension='t', reducer='mean')
     return dem
 
+    
 
 def build_normalized_cube(input_cube):
-    """Apply normalization to all bands in one pass"""
-    # Define band processing order
-    band_order = [
-        "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B11", "B12",
-        "NDVI", "NDRE", "EVI",
-        "VV", "VH",
-        "DEM", "lon", "lat"
-    ]
+    """Apply normalization using pure openEO processes"""
+    # Apply normalization
+    normalized_cube = normalize_cube(input_cube)
     
-    # Apply normalization to each band
-    normalized_bands = [
-        normalize_band(input_cube.band(b), b).rename(b)
-        for b in band_order
-    ]
-    
-    # Create new cube with normalized bands
-    return input_cube \
-        .add_dimension("normalized", "normalized") \
-        .apply_dimension(
-            lambda x: x.array_concat(normalized_bands),
-            dimension="bands"
-        ) \
-        .rename_labels("bands", band_order)
-
+    # Set band names
+    return normalized_cube.rename_labels("bands", BAND_ORDER)
 
 def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, resolution = 10, crs = "EPSG:3035"):
 
