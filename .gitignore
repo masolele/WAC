@@ -1,0 +1,7 @@
+# Ignore large model and data files
+*.hdf5
+*.onnx
+*.zip
+*.nc
+*.tif
+*.tiff
