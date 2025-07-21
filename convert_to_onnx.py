@@ -8,7 +8,7 @@ import onnx  # Required to load and print the ONNX model description
 
 # Add parent directory to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from Unet_RES_Att_models_IV import Attention_UNetFusion3I_SentinelMLP
+from Unet_RES_Att_models_IV import Attention_UNetFusion3I_Sentinel
 
 # Set environment variable to allow multiple OpenMP libraries
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -19,7 +19,7 @@ def convert_model_to_onnx():
     tf_model = tf.keras.models.load_model(model_path, compile=False)
 
     # Define input shape and signature for conversion
-    input_shape = (1, 64, 64, 17)  #batch size 1, 64x64 image, 15 channels
+    input_shape = (1, 64, 64, 17)  #batch size 1, 64x64 image, 17 channels
     input_signature = [tf.TensorSpec(input_shape, tf.float32, name='input')]
 
     # Convert the TensorFlow model to ONNX
