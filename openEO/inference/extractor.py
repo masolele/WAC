@@ -3,7 +3,7 @@
 from openeo import UDF
 from pathlib import Path
 from datetime import datetime, timedelta
-from normalization import normalize_cube, BAND_ORDER
+from normalization import normalize_cube, normalize_band
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
@@ -90,9 +90,6 @@ def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
     )
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
 
-    #cut back to the original extent after processing
-    #s1 = s1.filter_temporal(temporal_extent[0], temporal_extent[1])
-
     return s1
 
 
@@ -133,14 +130,6 @@ def load_dem(conn, spatial_extent, resolution, crs):
     return dem
 
     
-def build_normalized_cube(input_cube):
-    """Apply normalization using pure openEO processes"""
-    # Apply normalization
-    normalized_cube = normalize_cube(input_cube)
-    
-    # Set band names
-    return normalized_cube.rename_labels("bands", BAND_ORDER)
-
 def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, resolution = 10, crs = "EPSG:3035"):
 
     """
@@ -149,25 +138,36 @@ def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, 
     """
     # Load all sources
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
+    s2_norm = normalize_cube(s2, band_order=["B02", "B03", "B04"])
+
     ndvi, ndre, evi = compute_vegetation_indices(s2)
+    ndvi_norm = normalize_band(ndvi, "NDVI")
+    ndre_norm = normalize_band(ndre, "NDRE")
+    evi_norm = normalize_band(evi, "EVI")
+
+
     s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
+    s1_norm = normalize_cube(s1, band_order=["VV", "VH"])
+
     latlon = compute_latlon(s2, spatial_extent, resolution,crs)
+    latlon_norm = normalize_cube(latlon, band_order=["lon", "lat"])
+
     dem = load_dem(conn, spatial_extent, resolution, crs)
+    dem_norm = normalize_band(dem, "DEM")
 
     # Merge cubes
     # Merge all components
     input_cube = (
-        s2
-        .merge_cubes(s1)
-        .merge_cubes(ndvi)
-        .merge_cubes(ndre)
-        .merge_cubes(evi)
-        .merge_cubes(dem)
-        .merge_cubes(latlon)
+        s2_norm
+        .merge_cubes(s1_norm)
+        .merge_cubes(ndvi_norm)
+        .merge_cubes(ndre_norm)
+        .merge_cubes(evi_norm)
+        .merge_cubes(dem_norm)
+        .merge_cubes(latlon_norm)
     )
 
-    # Normalize
-    return build_normalized_cube(input_cube)
+    return input_cube
 
     
 

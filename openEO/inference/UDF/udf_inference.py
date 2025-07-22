@@ -115,9 +115,9 @@ def apply_model(
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
     
-    result = postprocess_output(raw_pred, coords, mask_invalid)
+    #result = postprocess_output(raw_pred, coords, mask_invalid)
     logger.info(f"apply_model result shape={result.shape}")
-    return result
+    return raw_pred
 
 
 def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
