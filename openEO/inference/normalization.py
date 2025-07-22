@@ -45,6 +45,8 @@ def normalize_band(band, band_name):
         min_val, max_val = NORMALIZATION_SPECS["linear"][band_name]
         return _normalize_linear(band, min_val, max_val)
     
+
+    
     return band.add_dimension('bands', band_name, 'bands')  # Return unchanged if no spec
 
 def _normalize_optical(band, min_val, max_val):
@@ -65,15 +67,14 @@ def normalize_cube(cube, band_order = BAND_ORDER):
     """Apply normalization to all bands and merge"""
     # Process bands
     normalized_bands = [
-        normalize_band(cube.band(band_name), band_name)
+        normalize_band(cube.band(band_name), band_name).add_dimension('bands', band_name, 'bands')
         for band_name in band_order
     ]
     
-        # Merge all bands
-    result = normalized_bands[0].add_dimension('bands', band_order[0], 'bands')
+    # Merge all bands
+    result = normalized_bands[0]
 
     for i in range(1, len(normalized_bands)):
-        band_cube = normalized_bands[i].add_dimension('bands', band_order[i], 'bands')
-        result.merge_cubes(band_cube)
+        result = result.merge_cubes(normalized_bands[i])
 
     return result 

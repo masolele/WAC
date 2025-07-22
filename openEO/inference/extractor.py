@@ -138,7 +138,7 @@ def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, 
     """
     # Load all sources
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
-    s2_norm = normalize_cube(s2, band_order=["B02", "B03", "B04"])
+    s2_norm = normalize_cube(s2, band_order=["B02","B03","B04","B05","B06","B07","B08","B11","B12"])
 
     ndvi, ndre, evi = compute_vegetation_indices(s2)
     ndvi_norm = normalize_band(ndvi, "NDVI")
