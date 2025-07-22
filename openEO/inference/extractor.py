@@ -3,7 +3,7 @@
 from openeo import UDF
 from pathlib import Path
 from datetime import datetime, timedelta
-from normalization import normalize_cube, normalize_band
+from normalization import normalize_cube
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
@@ -42,14 +42,34 @@ def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resol
 
 
 def compute_vegetation_indices(cube):
+    """Compute vegetation indices and return as a merged cube"""
+    ndvi = cube.ndvi(red='B04', nir='B08').add_dimension('bands', 'NDVI', 'bands')
+    
+    ndre = (cube.band('B08') - cube.band('B05')) / \
+           (cube.band('B08') + cube.band('B05')) \
+           .add_dimension('bands', 'NDRE', 'bands')
+    
+    output = ndvi.merge_cubes(ndre)
+    
+    evi_numerator = 2.5 * (cube.band('B08') - cube.band('B04'))
+    evi_denominator = cube.band('B08') + 6 * cube.band('B04') - 7.5 * cube.band('B02') + 1
+    evi = (evi_numerator / evi_denominator).add_dimension('bands', 'EVI', 'bands')
+
+    output = output.merge_cubes(evi)
+
+    return output
+
+def compute_vegetation_indices(cube):
     """
     Compute all required vegetation indices
     """
     # NDVI
     ndvi = cube.ndvi(red='B04', nir='B08')
+    ndvi = ndvi.add_dimension('bands', 'NDVI', 'bands')
     
     # NDRE: (NIR - RedEdge1)/(NIR + RedEdge1)
     ndre = (cube.band('B08') - cube.band('B05')) / (cube.band('B08') + cube.band('B05'))
+    ndre = ndre.add_dimension('bands', 'NDRE', 'bands')
     
     # EVI: 2.5*(NIR - Red)/(NIR + 6*Red - 7.5*Blue + 1)
     numerator = 2.5 * (cube.band('B08') - cube.band('B04'))
@@ -60,11 +80,13 @@ def compute_vegetation_indices(cube):
         1
     )
     evi = numerator / denominator
+    evi = evi.add_dimension('bands', 'EVI', 'bands')
+
+    output = ndvi.merge_cubes(ndre)
+    output = output.merge_cubes(evi)
     
     # Add dimension labels
-    return ndvi.add_dimension('bands', 'NDVI', 'bands'), \
-           ndre.add_dimension('bands', 'NDRE', 'bands'), \
-           evi.add_dimension('bands', 'EVI', 'bands')
+    return output
 
 
 def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
@@ -92,7 +114,7 @@ def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
 
     return s1
 
-
+#TODO looks wrong, should contain unique values
 def compute_latlon(sentinel2, spatial_extent, resolution, crs):
     """
     Apply lat/lon UDF to Sentinel-2 cube and temporal-reduce if needed.
@@ -130,7 +152,7 @@ def load_dem(conn, spatial_extent, resolution, crs):
     return dem
 
     
-def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, resolution = 10, crs = "EPSG:3035"):
+def load_input_cube(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, resolution = 10, crs = "EPSG:3035"):
 
     """
     Main extractor: loads data cubes, merges them,
@@ -138,36 +160,19 @@ def load_input_WAC(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, 
     """
     # Load all sources
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
-    s2_norm = normalize_cube(s2, band_order=["B02","B03","B04","B05","B06","B07","B08","B11","B12"])
-
-    ndvi, ndre, evi = compute_vegetation_indices(s2)
-    ndvi_norm = normalize_band(ndvi, "NDVI")
-    ndre_norm = normalize_band(ndre, "NDRE")
-    evi_norm = normalize_band(evi, "EVI")
-
-
     s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
-    s1_norm = normalize_cube(s1, band_order=["VV", "VH"])
-
-    latlon = compute_latlon(s2, spatial_extent, resolution,crs)
-    latlon_norm = normalize_cube(latlon, band_order=["lon", "lat"])
-
+    veg_indices = compute_vegetation_indices(s2)
+    latlon = compute_latlon(s2, spatial_extent, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
-    dem_norm = normalize_band(dem, "DEM")
-
-    # Merge cubes
-    # Merge all components
-    input_cube = (
-        s2_norm
-        .merge_cubes(s1_norm)
-        .merge_cubes(ndvi_norm)
-        .merge_cubes(ndre_norm)
-        .merge_cubes(evi_norm)
-        .merge_cubes(dem_norm)
-        .merge_cubes(latlon_norm)
-    )
-
-    return input_cube
+    
+    # Normalize cubes
+    normalized_cubes = [normalize_cube(cube) for cube in [s2, s1, veg_indices,latlon, dem]]
+    
+    # Merge all processed cubes
+    output = normalized_cubes[0]
+    for cube in normalized_cubes[1:]:
+        output = output.merge_cubes(cube)
+    return output
 
     
 

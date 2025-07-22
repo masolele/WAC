@@ -1,15 +1,4 @@
 
-from openeo.processes import clip, merge_cubes, ln, exp
-
-
-# Define band order
-BAND_ORDER = [
-    "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B11", "B12",
-    "NDVI", "NDRE", "EVI",
-    "VV", "VH",
-    "DEM", "lon", "lat"
-]
-
 # Constants
 NORMALIZATION_SPECS = {
     "optical": {
@@ -35,20 +24,7 @@ NORMALIZATION_SPECS = {
     }
 }
 
-def normalize_band(band, band_name):
-    """Apply band-specific normalization"""
-    if band_name in NORMALIZATION_SPECS["optical"]:
-        min_val, max_val = NORMALIZATION_SPECS["optical"][band_name]
-        return _normalize_optical(band, min_val, max_val)
     
-    if band_name in NORMALIZATION_SPECS["linear"]:
-        min_val, max_val = NORMALIZATION_SPECS["linear"][band_name]
-        return _normalize_linear(band, min_val, max_val)
-    
-
-    
-    return band.add_dimension('bands', band_name, 'bands')  # Return unchanged if no spec
-
 def _normalize_optical(band, min_val, max_val):
     """Optical band normalization using openEO processes"""
     scaled = band * 0.005
@@ -63,18 +39,30 @@ def _normalize_linear(band, min_val, max_val):
     clipped = band.apply(lambda x: x.clip(min_val, max_val))
     return (clipped - min_val) / (max_val - min_val)
 
-def normalize_cube(cube, band_order = BAND_ORDER):
-    """Apply normalization to all bands and merge"""
-    # Process bands
-    normalized_bands = [
-        normalize_band(cube.band(band_name), band_name).add_dimension('bands', band_name, 'bands')
-        for band_name in band_order
-    ]
+def normalize_cube(cube):
+    """Apply band-specific normalization to all bands in the cube"""
+    # Skip normalization if cube lacks bands dimension
+    if 'bands' not in cube.metadata.dimension_names():
+        return cube
     
-    # Merge all bands
-    result = normalized_bands[0]
-
-    for i in range(1, len(normalized_bands)):
-        result = result.merge_cubes(normalized_bands[i])
-
-    return result 
+    # Process each band
+    normalized_bands = []
+    for band_name in cube.metadata.band_names:
+        band_cube = cube.band(band_name)
+        
+        if band_name in NORMALIZATION_SPECS["optical"]:
+            min_val, max_val = NORMALIZATION_SPECS["optical"][band_name]
+            norm_band = _normalize_optical(band_cube, min_val, max_val)
+        elif band_name in NORMALIZATION_SPECS["linear"]:
+            min_val, max_val = NORMALIZATION_SPECS["linear"][band_name]
+            norm_band = _normalize_linear(band_cube, min_val, max_val)
+        else:
+            norm_band = band_cube  # Unspecified bands remain unchanged
+        
+        normalized_bands.append(norm_band.add_dimension('bands', band_name, 'bands'))
+    
+    # Merge processed bands
+    output_cube = normalized_bands[0]
+    for band in normalized_bands[1:]:
+        output_cube = output_cube.merge_cubes(band)
+    return output_cube
