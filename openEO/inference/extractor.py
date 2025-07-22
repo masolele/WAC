@@ -5,10 +5,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from normalization import normalize_cube, BAND_ORDER
 
-
-
-
-
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
 UDF_DIR = BASE_DIR / 'UDF'
@@ -137,7 +133,6 @@ def load_dem(conn, spatial_extent, resolution, crs):
     return dem
 
     
-
 def build_normalized_cube(input_cube):
     """Apply normalization using pure openEO processes"""
     # Apply normalization
