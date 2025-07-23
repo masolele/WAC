@@ -82,8 +82,9 @@ def compute_vegetation_indices(cube):
     evi = numerator / denominator
     evi = evi.add_dimension('bands', 'EVI', 'bands')
 
-    output = ndvi.merge_cubes(ndre)
-    output = output.merge_cubes(evi)
+    output = ndvi #TODO; increase for 17 band model
+    #output = ndvi.merge_cubes(ndre)
+    #output = output.merge_cubes(evi)
     
     # Add dimension labels
     return output
@@ -166,7 +167,7 @@ def load_input_cube(conn, spatial_extent, temporal_extent, max_cloud_cover = 85,
     dem = load_dem(conn, spatial_extent, resolution, crs)
     
     # Normalize cubes
-    normalized_cubes = [normalize_cube(cube) for cube in [s2, s1, veg_indices,latlon, dem]]
+    normalized_cubes = [normalize_cube(cube) for cube in [s2, veg_indices, s1, dem, latlon]] #TODO validate the order of bands
     
     # Merge all processed cubes
     output = normalized_cubes[0]
