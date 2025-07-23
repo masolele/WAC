@@ -65,41 +65,40 @@ def run_inference(
 
 
 def postprocess_output(
-    pred: np.ndarray,
+    pred: np.ndarray,  # Shape: [y, x, bands]
     coords: Dict[str, xr.Coordinate],
-    mask_invalid: np.ndarray
+    mask_invalid: np.ndarray  # Shape: [y, x, bands]
 ) -> xr.DataArray:
     """
-    Combine class predictions and probabilities into DataArray,
-    restoring NaNs for originally invalid pixels.
+    Appends winning class index as new band to predictions:
+      - Keeps original prediction values
+      - Adds new band (-1 for invalid, 0..n-1 for winning class)
     """
-    # Remove background class (class 0)
-    scores = pred[..., 1:].astype(np.float32)
-
-    # Normalize probabilities across class axis
-    score_sums = np.sum(scores, axis=-1, keepdims=True)
-    normalized_scores = np.divide(
-        scores,
-        score_sums,
-        out=np.zeros_like(scores),
-        where=score_sums != 0
-    )
-
-    normalized_scores *= 100.0
-
-    # Restore invalid pixels as NaN
-    invalid_any = np.any(mask_invalid, axis=-1)
-    normalized_scores[invalid_any] = 0 #TODO which value to set?
-
-    # Build DataArray
-    y_coords = coords["y"]
-    x_coords = coords["x"]
-    band_coords = np.arange(normalized_scores.shape[-1])
-
+    # Get winning class index (shape: [y, x])
+    class_index = np.argmax(pred, axis=-1, keepdims=True)  # Keepdims for concatenation
+    
+    # Identify invalid pixels (any invalid in input bands)
+    invalid_mask = np.any(mask_invalid, axis=-1, keepdims=True)
+    
+    # Mark invalid pixels as -1 in class index
+    class_index = np.where(invalid_mask, -1, class_index).astype(np.float32)
+    
+    # Concatenate with original predictions (shape: [y, x, bands+1])
+    combined = np.concatenate([pred, class_index], axis=-1)
+    
+    # Update band coordinates
+    original_band_coords = np.arange(pred.shape[-1])
+    new_band_coords = np.append(original_band_coords, pred.shape[-1])  # Appends "class_index" band
+    
     return xr.DataArray(
-        normalized_scores,
+        combined,
         dims=("y", "x", "bands"),
-        coords={"y": y_coords, "x": x_coords, "bands": band_coords}
+        coords={
+            "y": coords["y"],
+            "x": coords["x"],
+            "bands": new_band_coords  # Now includes extra band
+        },
+        attrs={"description": f"Original bands + class_index (band {pred.shape[-1]})"}
     )
 
 
