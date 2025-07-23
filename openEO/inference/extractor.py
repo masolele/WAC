@@ -81,8 +81,7 @@ def compute_vegetation_indices(cube):
     )
     evi = numerator / denominator
     evi = evi.add_dimension('bands', 'EVI', 'bands')
-
-    output = ndvi #TODO; increase for 17 band model
+    output = ndvi
     #output = ndvi.merge_cubes(ndre)
     #output = output.merge_cubes(evi)
     

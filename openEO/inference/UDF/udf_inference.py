@@ -125,11 +125,16 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     Apply ONNX model per timestep in the datacube.
     """
     logger.info(f"apply_datacube received shape={cube.shape}, dims={cube.dims}")
+
+    model_path  = str(context.get("model_path" ))
+
+    logger.info(f"Applying model: {model_path}")
+
     cube = cube.transpose('y', 'x', 'bands', 't')
 
     if 't' in cube.dims:
         logger.info("Applying model per timestep via groupby-map.")
-        return cube.groupby('t').map(lambda da: apply_model(da, "WAC_model_hansvrp.onnx"))
+        return cube.groupby('t').map(lambda da: apply_model(da,  model_path))
     else:
         logger.info("Single timestep: applying model once.")
-        return apply_model(cube, "WAC_model_hansvrp.onnx")
+        return apply_model(cube,  model_path)
