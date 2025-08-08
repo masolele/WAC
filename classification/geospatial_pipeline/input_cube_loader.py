@@ -1,18 +1,38 @@
 #TODO do normalisation in extractor instead of UDF
 
-from openeo import UDF
+from openeo import UDF, DataCube, Connection
 from pathlib import Path
 from datetime import datetime, timedelta
-from normalization import normalize_cube
+from geospatial_pipeline.band_normalization import normalize_cube
+from typing import Dict, List, Union
+
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
 UDF_DIR = BASE_DIR / 'UDF'
 
 
-def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs):
+def load_sentinel2(
+    conn: Connection,
+    spatial_extent: Dict[str, Union[float, str]],
+    temporal_extent: List[str],
+    max_cloud_cover: int = 70,
+    resolution: int = 10,
+    crs: str = 'EPSG:3035'
+) -> DataCube:
     """
-    Load, mask, and temporal-reduce Sentinel-2 L2A bands.
+    Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
+
+    Args:
+        conn: OpenEO connection object.
+        spatial_extent: Spatial bounds of the data.
+        temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
+        max_cloud_cover: Maximum allowed cloud cover percentage.
+        resolution: Spatial resolution in meters.
+        crs: Coordinate Reference System (e.g., 'EPSG:3035').
+
+    Returns:
+        DataCube: Monthly averaged and masked Sentinel-2 image cube.
     """
     s2 = (
         conn.load_collection(
@@ -41,27 +61,15 @@ def load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resol
     return s2.aggregate_temporal_period(period = 'month', reducer = 'mean')
 
 
-def compute_vegetation_indices(cube):
-    """Compute vegetation indices and return as a merged cube"""
-    ndvi = cube.ndvi(red='B04', nir='B08').add_dimension('bands', 'NDVI', 'bands')
-    
-    ndre = (cube.band('B08') - cube.band('B05')) / \
-           (cube.band('B08') + cube.band('B05')) \
-           .add_dimension('bands', 'NDRE', 'bands')
-    
-    output = ndvi.merge_cubes(ndre)
-    
-    evi_numerator = 2.5 * (cube.band('B08') - cube.band('B04'))
-    evi_denominator = cube.band('B08') + 6 * cube.band('B04') - 7.5 * cube.band('B02') + 1
-    evi = (evi_numerator / evi_denominator).add_dimension('bands', 'EVI', 'bands')
-
-    output = output.merge_cubes(evi)
-
-    return output
-
-def compute_vegetation_indices(cube):
+def compute_vegetation_indices(cube: DataCube) -> DataCube:
     """
-    Compute all required vegetation indices
+    Compute NDVI, NDRE, and EVI vegetation indices.
+
+    Args:
+        cube: Input Sentinel-2 data cube.
+
+    Returns:
+        DataCube: Cube with vegetation indices as new bands.
     """
     # NDVI
     ndvi = cube.ndvi(red='B04', nir='B08')
@@ -82,6 +90,8 @@ def compute_vegetation_indices(cube):
     evi = numerator / denominator
     evi = evi.add_dimension('bands', 'EVI', 'bands')
     output = ndvi
+
+    #TODO need clarity on final input design for ML models
     #output = ndvi.merge_cubes(ndre)
     #output = output.merge_cubes(evi)
     
@@ -89,12 +99,29 @@ def compute_vegetation_indices(cube):
     return output
 
 
-def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
+def load_sentinel1(
+    conn: Connection,
+    spatial_extent: Dict[str, Union[float, str]],
+    temporal_extent: List[str],
+    resolution: int,
+    crs: str
+) -> DataCube:
     """
-    Load and process Sentinel-1 VV/VH global mosaics.
+    Load Sentinel-1 VV/VH mosaics and apply log transformation.
 
-    There is an issue with the sentinel1 Global mosaic due to wich the first observation is always 0
+    Note:
+        An issue with the dataset causes the first observation to be always 0.
+        This is avoided by extending the start date by 1 day.
 
+    Args:
+        conn: OpenEO connection object.
+        spatial_extent: Spatial bounds of the data.
+        temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
+        resolution: Spatial resolution in meters.
+        crs: Coordinate Reference System (e.g., 'EPSG:3035').
+
+    Returns:
+        DataCube: Sentinel-1 log-transformed image cube.
     """
     orig_start = datetime.strptime(temporal_extent[0], "%Y-%m-%d")
     extended_start = (orig_start - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -114,10 +141,24 @@ def load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs):
 
     return s1
 
-#TODO looks wrong, should contain unique values
-def compute_latlon(sentinel2, spatial_extent, resolution, crs):
+#TODO validate output
+def compute_latlon(
+    sentinel2: DataCube,
+    spatial_extent: Dict[str, Union[float, str]],
+    resolution: int,
+    crs: str
+) -> DataCube:
     """
-    Apply lat/lon UDF to Sentinel-2 cube and temporal-reduce if needed.
+    Calculates lat/lon values for the given spatial extent.
+
+    Args:
+        sentinel2: Input Sentinel-2 data cube.
+        spatial_extent: Spatial bounds of the data.
+        resolution: Spatial resolution in meters.
+        crs: Coordinate Reference System (e.g., 'EPSG:3035').
+
+    Returns:
+        DataCube: Cube with latitude and longitude as bands.
     """
     # Inline UDF loading
     context = {
@@ -139,9 +180,23 @@ def compute_latlon(sentinel2, spatial_extent, resolution, crs):
     return latlon
 
 
-def load_dem(conn, spatial_extent, resolution, crs):
+def load_dem(
+    conn: Connection,
+    spatial_extent: Dict[str, Union[float, str]],
+    resolution: int,
+    crs: str
+) -> DataCube:
     """
-    Load DEM and temporal-reduce if needed.
+    Load Digital Elevation Model (DEM) data and temporally reduce it if needed.
+
+    Args:
+        conn: OpenEO connection object.
+        spatial_extent: Spatial bounds of the data.
+        resolution: Spatial resolution in meters.
+        crs: Coordinate Reference System (e.g., 'EPSG:3035').
+
+    Returns:
+        DataCube: DEM image cube.
     """
     dem = (
         conn.load_collection('COPERNICUS_30', spatial_extent=spatial_extent)
@@ -152,11 +207,28 @@ def load_dem(conn, spatial_extent, resolution, crs):
     return dem
 
     
-def load_input_cube(conn, spatial_extent, temporal_extent, max_cloud_cover = 85, resolution = 10, crs = "EPSG:3035"):
-
+def load_input_cube(
+    conn: Connection,
+    spatial_extent: Dict[str, Union[float, str]],
+    temporal_extent: List[str],
+    max_cloud_cover: int = 85,
+    resolution: int = 10,
+    crs: str = "EPSG:3035"
+) -> DataCube:
     """
-    Main extractor: loads data cubes, merges them,
-    applies normalization UDF, and returns the processed cube.
+    Main extractor function that loads and processes all required input data cubes,
+    normalizes them, and returns a merged cube.
+
+    Args:
+        conn: OpenEO connection object.
+        spatial_extent: Spatial bounds of the data.
+        temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
+        max_cloud_cover: Maximum allowed cloud cover percentage.
+        resolution: Spatial resolution in meters.
+        crs: Coordinate Reference System (default: 'EPSG:3035').
+
+    Returns:
+        DataCube: Final merged and normalized data cube.
     """
     # Load all sources
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)

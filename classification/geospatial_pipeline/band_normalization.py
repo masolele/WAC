@@ -1,5 +1,9 @@
+from openeo import DataCube
+import logging
 
-# Constants
+logger = logging.getLogger(__name__)
+
+# ML model onstants for normalization ranges
 NORMALIZATION_SPECS = {
     "optical": {
         "B02": (1.7417268007636313, 2.023298706048351),
@@ -25,8 +29,18 @@ NORMALIZATION_SPECS = {
 }
 
     
-def _normalize_optical(band, min_val, max_val):
-    """Optical band normalization using openEO processes"""
+def _normalize_optical(band: DataCube, min_val: float, max_val: float) -> DataCube:
+    """
+    Apply non-linear normalization to optical bands.
+
+    Args:
+        band: Input optical band as a DataCube.
+        min_val: Minimum expected log-transformed value.
+        max_val: Maximum expected log-transformed value.
+
+    Returns:
+        DataCube: Normalized optical band.
+    """
     scaled = band * 0.005
     transformed = scaled.apply(lambda x: 1 + x.ln())
     normalized = (transformed - min_val) / (max_val - min_val)
@@ -34,15 +48,37 @@ def _normalize_optical(band, min_val, max_val):
     exp_t = t.apply(lambda x: x.exp())
     return exp_t / (exp_t + 1.0)
 
-def _normalize_linear(band, min_val, max_val):
-    """Linear normalization using openEO processes"""
+def _normalize_linear(band: DataCube, min_val: float, max_val: float) -> DataCube:
+    """
+    Apply min-max normalization to a band with linear value range.
+
+    Args:
+        band: Input band as a DataCube.
+        min_val: Minimum expected value.
+        max_val: Maximum expected value.
+
+    Returns:
+        DataCube: Normalized band.
+    """
     clipped = band.apply(lambda x: x.clip(min_val, max_val))
     return (clipped - min_val) / (max_val - min_val)
 
-def normalize_cube(cube):
-    """Apply band-specific normalization to all bands in the cube"""
+def normalize_cube(cube: DataCube) -> DataCube:
+    """
+    Normalize each band in the input cube based on predefined specs.
+
+    Uses either optical or linear normalization depending on the band.
+    Bands without a known specification will be returned unchanged.
+
+    Args:
+        cube: Input DataCube with a 'bands' dimension.
+
+    Returns:
+        DataCube: Cube with normalized bands.
+    """
     # Skip normalization if cube lacks bands dimension
     if 'bands' not in cube.metadata.dimension_names():
+        logger.warning("Input cube has no 'bands' dimension, skipping normalization.")
         return cube
     
     # Process each band
