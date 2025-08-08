@@ -4,13 +4,14 @@ import json
 from openeo import Connection, DataCube
 from openeo.api.process import Parameter
 from openeo.rest.udp import build_process_dict
+from typing import Callable
 
 import config
 from geospatial_pipeline.input_cube_loader import load_input_cube
 from geospatial_pipeline.onnx_inference import run_inference
 
 
-def build_pipeline(conn: Connection) -> DataCube:
+def create_classification_cube(conn: Connection) -> DataCube:
     """
     Load data, preprocess, and run inference in a single pipeline.
 
@@ -44,7 +45,7 @@ def build_pipeline(conn: Connection) -> DataCube:
 
 
 def generate_udp(conn: Connection,
-                build_pipeline_fn: DataCube,
+                build_cube_fn: Callable[[Connection], DataCube],
                 process_id: str,
                 summary: str,
                 output_dir: Path,
@@ -68,7 +69,7 @@ def generate_udp(conn: Connection,
     temporal_extent = Parameter.temporal_interval(name="temporal_extent",default=config.TEMPORAL_EXTENT)
     
     # Connect and build the data cube (could be just to get the process graph)
-    datacube = build_pipeline_fn(conn)
+    datacube = build_cube_fn(conn)
 
 
     # Build the UDP process dictionary
