@@ -138,6 +138,8 @@ def load_sentinel1(
         .resample_spatial(resolution=resolution, projection=crs)
     )
 
+    s1 = s1.apply(lambda x: 10 * x.log(base=10))
+    
     return s1.aggregate_temporal_period(period = 'year', reducer = 'median')
 
 #TODO validate output
