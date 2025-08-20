@@ -58,7 +58,7 @@ def load_sentinel2(
 
     mask = scl.process('to_scl_dilation_mask', data=scl)
     s2 = s2.mask(mask)
-    return s2.aggregate_temporal_period(period = 'month', reducer = 'mean')
+    return s2.aggregate_temporal_period(period = 'year', reducer = 'median')
 
 
 def compute_vegetation_indices(cube: DataCube) -> DataCube:
@@ -89,11 +89,11 @@ def compute_vegetation_indices(cube: DataCube) -> DataCube:
     )
     evi = numerator / denominator
     evi = evi.add_dimension('bands', 'EVI', 'bands')
-    output = ndvi
+    #output = ndvi
 
     #TODO need clarity on final input design for ML models
-    #output = ndvi.merge_cubes(ndre)
-    #output = output.merge_cubes(evi)
+    output = ndvi.merge_cubes(ndre)
+    output = output.merge_cubes(evi)
     
     # Add dimension labels
     return output
@@ -137,9 +137,8 @@ def load_sentinel1(
         )
         .resample_spatial(resolution=resolution, projection=crs)
     )
-    s1 = s1.apply(lambda x: 10 * x.log(base=10))
 
-    return s1
+    return s1.aggregate_temporal_period(period = 'year', reducer = 'median')
 
 #TODO validate output
 def compute_latlon(
@@ -203,7 +202,7 @@ def load_dem(
         .resample_spatial(resolution=resolution, projection=crs, method='bilinear')
     )
     if dem.metadata.has_temporal_dimension():
-        dem = dem.reduce_dimension(dimension='t', reducer='mean')
+        dem = dem.reduce_dimension(dimension='t', reducer='max')
     return dem
 
     
@@ -237,13 +236,9 @@ def load_input_cube(
     latlon = compute_latlon(s2, spatial_extent, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
     
-    # Normalize cubes
-    normalized_cubes = [normalize_cube(cube) for cube in [s2, veg_indices, s1, dem, latlon]] #TODO validate the order of bands
-    
+    output = s2.merge_cubes(s1).merge_cubes(veg_indices).merge_cubes(latlon).merge_cubes(dem)
+
     # Merge all processed cubes
-    output = normalized_cubes[0]
-    for cube in normalized_cubes[1:]:
-        output = output.merge_cubes(cube)
     return output
 
     

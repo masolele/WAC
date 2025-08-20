@@ -2,22 +2,22 @@ CRS = "EPSG:3035"
 RESOLUTION = 10  # important; the resolution is implicitely tied to the CRS; so we need to use UTM based CRS here
 
 PATCH_SIZE = 128
-OVERLAP_SIZE = 64
+OVERLAP_SIZE = 32
 
 SPATIAL_EXTENT = {
-    'west': 300000,
-    'south': 9800000,
-    'east': 305000,  
-    'north': 9805000,  
+    'west': 3718000.31,
+    'south': -1612348.84,
+    'east': 3726980.14,
+    'north': -1604715.33,
     'crs': CRS  
 }
 
 #TODO discuss model management; versioning, storage, access, STAC?
 N_CLASSES = 24
-MODEL_NAME = "best_weights_att_unet_lagtime_5_Fused3_2023_totalLoss6V1_without_loss_sent_Southeast_Asia20"
+MODEL_NAME = "best_weights_att_unet_lagtime_5_Fused3_2023_totalLoss6V1_without_loss_sentAfrica6"
 
-TEMPORAL_EXTENT = ['2023-06-01', '2023-08-01'] 
-MAX_CLOUD_COVER = 85
+TEMPORAL_EXTENT = ['2023-01-01', '2024-01-01'] 
+MAX_CLOUD_COVER = 50
 
 
 JOB_OPTIONS = {'driver-memory': '2000m',
