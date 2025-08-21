@@ -3,7 +3,6 @@
 from openeo import UDF, DataCube, Connection
 from pathlib import Path
 from datetime import datetime, timedelta
-from geospatial_pipeline.band_normalization import normalize_cube
 from typing import Dict, List, Union
 
 

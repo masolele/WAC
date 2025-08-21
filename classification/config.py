@@ -17,7 +17,7 @@ N_CLASSES = 24
 MODEL_NAME = "best_weights_att_unet_lagtime_5_Fused3_2023_totalLoss6V1_without_loss_sentAfrica6"
 
 TEMPORAL_EXTENT = ['2023-01-01', '2024-01-01'] 
-MAX_CLOUD_COVER = 50
+MAX_CLOUD_COVER = 85
 
 
 JOB_OPTIONS = {'driver-memory': '2000m',

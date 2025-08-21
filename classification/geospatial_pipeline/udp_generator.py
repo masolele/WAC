@@ -9,6 +9,7 @@ from typing import Callable
 import config
 from geospatial_pipeline.input_cube_loader import load_input_cube
 from geospatial_pipeline.onnx_inference import run_inference
+from geospatial_pipeline.band_normalization import normalize_cube
 
 
 def create_classification_cube(conn: Connection) -> DataCube:
@@ -31,9 +32,13 @@ def create_classification_cube(conn: Connection) -> DataCube:
         crs=config.CRS
     )
 
+    #UDF based normalisation
+    cube_normalised = normalize_cube(cube)
+
+
     # Run inference
     inference_cube = run_inference(
-        cube,
+        cube_normalised,
         model_name=config.MODEL_NAME,
         patch_size=config.PATCH_SIZE,
         overlap=config.OVERLAP_SIZE

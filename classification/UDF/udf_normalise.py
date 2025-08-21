@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 
 # Configure logging
@@ -32,13 +32,15 @@ NORMALIZATION_SPECS = {
 }
 
 def _normalize_optical(arr: np.ndarray, min_val: float, max_val: float) -> np.ndarray:
+    """Log-based normalization for optical bands."""
     arr = np.log(arr * 0.005 + 1)
     arr = (arr - min_val) / (max_val)
     arr = np.exp(arr * 5 - 1)
-    return (arr / (arr + 1))
+    return arr / (arr + 1)
 
 
 def _normalize_linear(arr: np.ndarray, min_val: float, max_val: float) -> np.ndarray:
+    """Linear min–max normalization for continuous variables."""
     arr = np.clip(arr, min_val, max_val)
     return (arr - min_val) / (max_val - min_val)
 
@@ -47,18 +49,84 @@ NORMALIZE_FUNCS = {
     "linear": _normalize_linear,
 }
 
+def get_expected_bands() -> List[str]:
+    """
+    Derive expected band order directly from NORMALIZATION_SPECS.
+    Preserves the order in which groups and bands were defined.
+    """
+    expected = []
+    for group_bands in NORMALIZATION_SPECS.values():
+        expected.extend(group_bands.keys())
+    return expected
 
-def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
+def validate_and_reorder_bands(cube: xr.DataArray, expected_bands: list) -> xr.DataArray:
     """
-    Flexible normalization UDF with detailed logging.
-    - Normalizes whichever bands are present in the input cube
-    - Uses NORMALIZATION_SPECS to decide method/range
-    - Unknown bands are left unchanged (with a warning)
+    Validate presence and order of required bands in a data cube.
+    
+    Ensures that:
+      1. All required bands are present.
+      2. Bands are in the correct order (reorders if needed).
+
+    Args:
+        cube (xr.DataArray):
+            Input data cube with a 'bands' coordinate.
+        expected_bands (list):
+            Ordered list of band names required for processing.
+
+    Returns:
+        xr.DataArray:
+            Data cube with bands in the correct order.
+
+    Raises:
+        ValueError: If any required bands are missing.
     """
-    logger.info(f"Received data with shape: {cube.shape}, dims: {cube.dims}")
     band_names = list(cube.coords["bands"].values)
     logger.info(f"Input bands: {band_names}")
 
+    # Check for missing bands
+    missing_bands = [b for b in expected_bands if b not in band_names]
+    if missing_bands:
+        raise ValueError(f"Missing required bands: {missing_bands}. Got: {band_names}")
+
+    # Reorder if needed
+    if band_names != expected_bands:
+        logger.warning(f"Band order mismatch. Reordering to: {expected_bands}")
+        cube = cube.sel(bands=expected_bands)
+
+    return cube
+
+
+def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
+
+    """
+    Normalize all bands in an input data cube according to predefined specifications.
+
+    Steps:
+      1. Derive expected band order from NORMALIZATION_SPECS.
+      2. Validate band presence and order.
+      3. Apply normalization function per band based on its group.
+
+    Args:
+        cube (xr.DataArray):
+            Input data cube with dimensions ("bands", "y", "x").
+
+    Returns:
+        xr.DataArray:
+            Normalized data cube with same shape, dimensions, and band names.
+
+    Raises:
+        ValueError: If required bands are missing or in the wrong order.
+    """
+     
+    logger.info(f"Received data with shape: {cube.shape}, dims: {cube.dims}")
+
+    expected_bands = get_expected_bands()
+
+    # --- Validate & reorder bands in one call ---
+    cube = validate_and_reorder_bands(cube, expected_bands)
+
+    # --- Normalization logic stays unchanged ---
+    band_names = list(cube.coords["bands"].values)
     img_values = cube.values
     normalized_bands = []
     output_band_names = []
@@ -83,17 +151,11 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
                     f"mean={pre_stats[2]:.3f}->{post_stats[2]:.3f}"
                 )
                 normalized_bands.append(normalized)
-                output_band_names.append(band)
-                break
 
-        if group is None:
-            logger.warning(f"Band {band}: no normalization defined, leaving unchanged.")
-            post_stats = pre_stats
-            logger.info(
-                f"Band {band}: kept as-is, "
-                f"min={pre_stats[0]:.3f}, max={pre_stats[1]:.3f}, mean={pre_stats[2]:.3f}"
-            )
-            normalized_bands.append(arr.astype(np.float32))
+            else:
+                logger.warning(f"Band {band}: no normalization defined, leaving unchanged.")
+                normalized_bands.append(arr)
+
             output_band_names.append(band)
 
     # Stack back into DataArray
