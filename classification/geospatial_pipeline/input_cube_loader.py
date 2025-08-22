@@ -237,7 +237,7 @@ def load_input_cube(
     latlon = compute_latlon(s2, spatial_extent, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
     
-    output = s2.merge_cubes(s1).merge_cubes(veg_indices).merge_cubes(latlon).merge_cubes(dem)
+    output = s2.merge_cubes(s1).merge_cubes(dem).merge_cubes(latlon).merge_cubes(veg_indices)
 
     # Merge all processed cubes
     return output
