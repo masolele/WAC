@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 import logging
 from typing import Dict, Tuple
+from scipy.special import expit
 
 
 # Setup logger
@@ -63,7 +64,7 @@ def run_inference(
     logger.info(f"Inference output shape={pred.shape}")
     return pred
 
-
+#TODO
 def postprocess_output(
     pred: np.ndarray,  # Shape: [y, x, bands]
     coords: Dict[str, xr.Coordinate],
@@ -74,32 +75,33 @@ def postprocess_output(
       - Keeps original prediction values
       - Adds new band (-1 for invalid, 0..n-1 for winning class)
     """
-    # Get winning class index (shape: [y, x])
-    class_index = np.argmax(pred, axis=-1, keepdims=True)  # Keepdims for concatenation
+
+    # Apply sigmoid
+    #sigmoid_probs = expit(pred)  # shape [y, x, bands]
+
+    # Optionally pick highest prob if needed
+    class_index = np.argmax(pred, axis=-1, keepdims=True)
     
     # Identify invalid pixels (any invalid in input bands)
     invalid_mask = np.any(mask_invalid, axis=-1, keepdims=True)
-    
-    # Mark invalid pixels as -1 in class index
     class_index = np.where(invalid_mask, -1, class_index).astype(np.float32)
-    
-    # Concatenate with original predictions (shape: [y, x, bands+1])
-    combined = np.concatenate([pred, class_index], axis=-1)
-    
+
     # Update band coordinates
-    original_band_coords = np.arange(pred.shape[-1])
-    new_band_coords = np.append(original_band_coords, pred.shape[-1])  # Appends "class_index" band
-    
+    new_band_coords = np.arange(pred.shape[-1] + 1)
+
+    combined = np.concatenate([pred, class_index], axis=-1)
+
     return xr.DataArray(
         combined,
         dims=("y", "x", "bands"),
         coords={
             "y": coords["y"],
             "x": coords["x"],
-            "bands": new_band_coords  # Now includes extra band
+            "bands": new_band_coords
         },
-        attrs={"description": f"Original bands + class_index (band {pred.shape[-1]})"}
+        attrs={"description": "Original preds, probs, class index"}
     )
+
 
 
 def apply_model(
@@ -114,8 +116,9 @@ def apply_model(
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
     
+    #TODO evaluate reprocessing
     result = postprocess_output(raw_pred, coords, mask_invalid)
-    logger.info(f"apply_model result shape={result.shape}")
+    #logger.info(f"apply_model result shape={result.shape}")
     return result
 
 
