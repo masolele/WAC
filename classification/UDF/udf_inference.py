@@ -64,7 +64,7 @@ def run_inference(
     logger.info(f"Inference output shape={pred.shape}")
     return pred
 
-
+#TODO
 def postprocess_output(
     pred: np.ndarray,  # Shape: [y, x, bands]
     coords: Dict[str, xr.Coordinate],
@@ -77,24 +77,19 @@ def postprocess_output(
     """
 
     # Apply sigmoid
-    sigmoid_probs = expit(pred)  # shape [y, x, bands]
+    #sigmoid_probs = expit(pred)  # shape [y, x, bands]
 
     # Optionally pick highest prob if needed
-    class_index = np.argmax(sigmoid_probs, axis=-1, keepdims=True)
+    class_index = np.argmax(pred, axis=-1, keepdims=True)
     
     # Identify invalid pixels (any invalid in input bands)
     invalid_mask = np.any(mask_invalid, axis=-1, keepdims=True)
     class_index = np.where(invalid_mask, -1, class_index).astype(np.float32)
-    
 
-    num_bands = pred.shape[-1]
-    band_names = (
-        [f"pred_{i}" for i in range(num_bands)] +
-        [f"sigmoid_{i}" for i in range(num_bands)] +
-        ["class_index"]
-    )
+    # Update band coordinates
+    new_band_coords = np.arange(pred.shape[-1] + 1)
 
-    combined = np.concatenate([pred, sigmoid_probs, class_index], axis=-1)
+    combined = np.concatenate([pred, class_index], axis=-1)
 
     return xr.DataArray(
         combined,
@@ -102,10 +97,11 @@ def postprocess_output(
         coords={
             "y": coords["y"],
             "x": coords["x"],
-            "bands": band_names
+            "bands": new_band_coords
         },
-        attrs={"description": "Original preds, sigmoid probs, class index"}
+        attrs={"description": "Original preds, probs, class index"}
     )
+
 
 
 def apply_model(
@@ -120,6 +116,7 @@ def apply_model(
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
     
+    #TODO evaluate reprocessing
     result = postprocess_output(raw_pred, coords, mask_invalid)
     #logger.info(f"apply_model result shape={result.shape}")
     return result
