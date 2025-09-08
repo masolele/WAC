@@ -17,7 +17,7 @@ The model is an Attention U-Net with fusion mechanisms, specifically designed fo
 The model expects a single input tensor with the following specifications:
 
 - **Input Name**: "input"
-- **Shape**: `[1, 64, 64, 15] Latin America, Southeast Asia, [1, 64, 64, 17] Africa`
+- **Shape**: `[1, 64, 64, 15] for Latin America, Southeast Asia, and [1, 64, 64, 17] for Africa`
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
