@@ -61,7 +61,7 @@ The model predicts multiple crop type. Each pixel in the output contains a proba
 
 Example format for each pixel:
 ```python
-### Africa and Asia model output has 23 classes
+# Africa and Asia model output has 23 classes
 classes = [
 
 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
@@ -69,7 +69,7 @@ classes = [
 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea
 ]
 
-### Latin America model output has only 21 classes
+# Latin America model output has only 21 classes
 classes = [
 
 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
