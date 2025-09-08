@@ -17,15 +17,15 @@ The model is an Attention U-Net with fusion mechanisms, specifically designed fo
 The model expects a single input tensor with the following specifications:
 
 - **Input Name**: "input"
-- **Shape**: `[1, 64, 64, 15]`
+- **Shape**: `[1, 64, 64, 15] Latin America, Southeast Asia, [1, 64, 64, 17] Africa`
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
-  - Channels: 17 (combined features)
+  - Channels: 15 (combined features - Latin America, Southeast Asia), and 17 (combined features - Africa) 
 - **Data Type**: float32 (elem_type: 1)
 
 ### Input Channel Organization
-The 17 input channels are organized as follows:
+The input channels are organized as follows:
 
 1. **Sentinel-2 Bands** (Channels 0-8):
    - Blue, Green, Red
@@ -44,7 +44,8 @@ The 17 input channels are organized as follows:
    - Latitude (normalized to [-60, 60] range)
 
 4. **Additional Features** (Channel 14):
-   - Derived indices (NDVI, SAVI, EVI, LAI, NDWI)???
+   - Derived indices Latin America, Southeast Asia (NDVI)
+   - Derived indices Africa (NDVI, NDRE, EVI)
 
 ## Output Specifications
 
@@ -53,7 +54,7 @@ The 17 input channels are organized as follows:
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
-  - Classes: 1 (probability distribution over crop type)
+  - Classes: 23 for Africa and Southeast Asia, 21 Latin America (probability distribution over crop type)
 - **Data Type**: float32 (elem_type: 1)
 
 ### Crop Classes
@@ -61,7 +62,7 @@ The model predicts multiple crop type. Each pixel in the output contains a proba
 
 Example format for each pixel:
 ```python
-# Africa and Asia model output has 23 classes
+# Africa and Southeast Asia model output has 23 classes
 classes = [
 
 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
