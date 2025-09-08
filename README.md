@@ -43,7 +43,7 @@ The input channels are organized as follows:
    - Longitude (normalized to [-180, 180] range)
    - Latitude (normalized to [-60, 60] range)
 
-4. **Additional Features** (Channel 14):
+4. **Additional Features**:
    - Derived indices Latin America, Southeast Asia (NDVI)
    - Derived indices Africa (NDVI, NDRE, EVI)
 
