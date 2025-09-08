@@ -57,14 +57,24 @@ The 17 input channels are organized as follows:
 - **Data Type**: float32 (elem_type: 1)
 
 ### Crop Classes
-The model predicts 1 crop type. Each pixel in the output contains a probability distribution over this class.
+The model predicts multiple crop type. Each pixel in the output contains a probability distribution over each class.
 
 Example format for each pixel:
 ```python
+### Africa and Asia model output has 23 classes
 classes = [
-    # Add crop classes here
-    "class_0",  # e.g., "Oil Palm"
-    "class_1",  # e.g., "Other"
+
+1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest, 7: Plantation forest, 8: Coffee 
+9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado, 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice
+21: Wood/logging, 22: Cashew, 23: Tea
+]
+
+### Latin America model output has only 21 classes
+classes = [
+
+1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest, 7: Plantation forest, 8: Coffee 
+9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado, 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice
+21: Wood/logging
 ]
 ```
 
