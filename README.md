@@ -64,17 +64,17 @@ Example format for each pixel:
 ### Africa and Asia model output has 23 classes
 classes = [
 
-1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest, 7: Plantation forest, 8: Coffee 
-9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado, 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice
-21: Wood/logging, 22: Cashew, 23: Tea
+1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea
 ]
 
 ### Latin America model output has only 21 classes
 classes = [
 
-1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest, 7: Plantation forest, 8: Coffee 
-9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado, 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice
-21: Wood/logging
+1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging
 ]
 ```
 
