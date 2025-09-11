@@ -78,8 +78,8 @@ classes = [
 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging
 ]
 
-To get the probability of a class, you need to  identify the class value as output, e.g. for class cocoa you would set the prediction output as
-model.predict(input_image)[:,:,8]
+To get the probability of a class, you need to set the class value as output, e.g. for class cocoa (class 13), you would set the prediction output as
+model.predict(input_image)[:,:,13], or for coffee (class 8) model.predict(input_image)[:,:,8]
 ```
 
 ## Model Conversion Details
