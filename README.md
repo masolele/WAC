@@ -58,7 +58,7 @@ The input channels are organized as follows:
 - **Data Type**: float32 (elem_type: 1)
 
 ### Crop Classes
-The model predicts multiple crop type. Each pixel in the output contains a probability distribution over each class.
+The model predict's probability of multiple crop type. Each pixel in the output contains a probability distribution over each class.
 
 Example format for each pixel:
 ```python
@@ -77,6 +77,9 @@ classes = [
 7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
 15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging
 ]
+
+To get the probability of a class, you need to  identify the class value as output, e.g. for class cocoa you would set the prediction output as
+model.predict(input_image)[:,:,8]
 ```
 
 ## Model Conversion Details
