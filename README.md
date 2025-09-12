@@ -62,7 +62,7 @@ The model predict's probability of multiple crop type. Each pixel in the output 
 
 Example format for each pixel:
 ```python
-# Africa model output has 25 classes nd Southeast Asia model output has 23 classes
+# Africa model output has 25 classes 
 classes = [
 
 0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
