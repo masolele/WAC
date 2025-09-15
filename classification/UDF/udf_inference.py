@@ -80,9 +80,11 @@ def postprocess_output(
     #sigmoid_probs = expit(pred)  # shape [y, x, bands]
 
     # Optionally pick highest prob if needed
-    class_index = np.argmax(pred, axis=-1, keepdims=True)
+    #class_index = np.argmax(pred, axis=-1, keepdims=True)
     
     # Identify invalid pixels (any invalid in input bands)
+    class_index = np.argmax(pred, axis=-1, keepdims=True)  # shape [y, x, 1]
+
     invalid_mask = np.any(mask_invalid, axis=-1, keepdims=True)
     class_index = np.where(invalid_mask, -1, class_index).astype(np.float32)
 
@@ -99,7 +101,7 @@ def postprocess_output(
             "x": coords["x"],
             "bands": new_band_coords
         },
-        attrs={"description": "Original preds, probs, class index"}
+        attrs={"description": "Original preds, sigmoid probs, class index"}
     )
 
 

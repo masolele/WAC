@@ -95,7 +95,7 @@ def compute_vegetation_indices(cube: DataCube) -> DataCube:
     output = output.merge_cubes(evi)
     
     # Add dimension labels
-    return output
+    return ndvi
 
 
 def load_sentinel1(

@@ -4,14 +4,14 @@ This module is part of the **WAC** project, featuring an Attention U‑Net with 
 
 ## Folder Structure & Overview
 
-classification/
-  ├─ band_normalization.py        # Preprocessing: normalize satellite bands, radar, and geo-data
-  ├─ cube_loader.py               # Build input cubes for inference
-  ├─ onnx_inference.py            # Run ONNX model inference
-  ├─ udp_generator.py             # Generate UDP (User-Defined Processing) payloads
-model_conversion/                 # Scripts for converting the TensorFlow model to ONNX
-UDF/                              # openEO-compatible user-defined functions
-UDP/                              # UDP outputs for integration testing
+classification
+  - band_normalization.py        # Preprocessing: normalize satellite bands, radar, and geo-data
+  -  cube_loader.py              # Build input cubes for inference
+  - onnx_inference.py            # Run ONNX model inference
+  - udp_generator.py             # Generate UDP (User-Defined Processing) payloads
+model_conversion                 # Scripts for converting the TensorFlow model to ONNX
+UDF                              # openEO-compatible user-defined functions
+UDP                              # UDP outputs for integration testing
 config.py         # Configuration file containing all adjustable parameters
 
 full_processing_pipeline.ipynb  # End-to-end notebook: full pipeline and UDP creation
