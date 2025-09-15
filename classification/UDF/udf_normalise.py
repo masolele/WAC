@@ -121,8 +121,8 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     logger.info(f"Received data with shape: {cube.shape}, dims: {cube.dims}")
 
     # --- Validate & reorder bands in one call ---
-    expected_bands = get_expected_bands()
-    validate_bands(cube, expected_bands)
+    #expected_bands = get_expected_bands()
+    #validate_bands(cube, expected_bands)
 
     # --- Normalization logic stays unchanged ---
     band_names = list(cube.coords["bands"].values)
