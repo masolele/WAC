@@ -95,7 +95,7 @@ def compute_vegetation_indices(cube: DataCube) -> DataCube:
     output = output.merge_cubes(evi)
     
     # Add dimension labels
-    return ndvi
+    return output
 
 
 def load_sentinel1(
@@ -141,8 +141,8 @@ def load_sentinel1(
     
     return s1.aggregate_temporal_period(period = 'year', reducer = 'median')
 
-#TODO validate output
-def compute_latlon(
+#TODO need to double check if we get a smooth output
+def compute_lonlat(
     sentinel2: DataCube,
     spatial_extent: Dict[str, Union[float, str]],
     resolution: int,
@@ -168,11 +168,11 @@ def compute_latlon(
         'north': spatial_extent['north'],
         'crs': spatial_extent['crs']
     }
-    udf_latlon = UDF.from_file(UDF_DIR / 'udf_lat_lon.py', context=context)
+    udf_lonlat = UDF.from_file(UDF_DIR / 'udf_lon_lat.py', context=context)
 
     latlon = (
         sentinel2
-        .apply(process=udf_latlon)
+        .apply(process=udf_lonlat)
         .resample_spatial(resolution=resolution, projection=crs)
         .rename_labels('bands', ['lon','lat'])
     )
@@ -234,10 +234,10 @@ def load_input_cube(
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
     s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
     veg_indices = compute_vegetation_indices(s2)
-    latlon = compute_latlon(s2, spatial_extent, resolution, crs)
+    lonlat = compute_lonlat(s2, spatial_extent, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
-    
-    output = s2.merge_cubes(s1).merge_cubes(dem).merge_cubes(latlon).merge_cubes(veg_indices)
+
+    output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem).merge_cubes(lonlat)
 
     # Merge all processed cubes
     return output

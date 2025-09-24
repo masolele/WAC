@@ -37,9 +37,9 @@ def normalize_cube(
 
 
 
-    udf_inference = UDF.from_file(UDF_DIR / 'udf_normalise.py')
+    udf_norm = UDF.from_file(UDF_DIR / 'udf_normalise.py')
 
-    output =  input_cube.apply(process=udf_inference)
+    output =  input_cube.apply(process=udf_norm)
     return output
 
 
