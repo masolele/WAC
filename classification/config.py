@@ -50,6 +50,7 @@ MODEL_NAME = "best_weights_att_unet_lagtime_5_Fused3_2023_totalLoss6V1_without_l
 
 TEMPORAL_EXTENT = ['2023-01-01', '2024-01-01'] 
 MAX_CLOUD_COVER = 75
+QUANTILE = 0.8
 
 
 JOB_OPTIONS = {'driver-memory': '2000m',
