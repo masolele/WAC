@@ -57,7 +57,7 @@ JOB_OPTIONS = {'driver-memory': '500m',
  'driver-memoryOverhead': '2000m',
  'executor-memory': '2000m',
  'executor-memoryOverhead': '1000m',
- 'python-memory': '4000m',
+ 'python-memory': '3000m',
  'max-executors': 10,
  "udf-dependency-archives": [
         "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_dependencies_1.16.3.zip#onnx_deps",
