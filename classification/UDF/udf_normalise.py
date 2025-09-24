@@ -22,29 +22,31 @@ NORMALIZATION_SPECS = {
         "B12": (1.7417268007636313, 2.023298706048351),
     },
     "linear": {
+        "NDVI": (0, 1), #TODO should not get normalized
+        "NDRE": (-1, 1),
+        "EVI": (-1, 1),
         "VV": (-25, 0),
         "VH": (-30, -5),
         "DEM": (-400, 8000),
         "lon": (-180, 180),
-        "lat": (-60, 60),
-        "NDVI": (-1, 1),
-        "NDRE": (-1, 1),
-        "EVI": (-1, 1)
+        "lat": (-60, 60)
     },
 }
 
-def _normalize_optical(arr: np.ndarray, min_val: float, max_val: float) -> np.ndarray:
+
+def _normalize_optical(arr: np.ndarray, min_spec: float, max_spec: float) -> np.ndarray:
     """Log-based normalization for optical bands."""
     arr = np.log(arr * 0.005 + 1)
-    arr = (arr - min_val) / (max_val)
+    arr = (arr - min_spec) / (max_spec)
     arr = np.exp(arr * 5 - 1)
     return arr / (arr + 1)
 
 
-def _normalize_linear(arr: np.ndarray, min_val: float, max_val: float) -> np.ndarray:
+def _normalize_linear(arr: np.ndarray, min_spec: float, max_spec: float) -> np.ndarray:
     """Linear min–max normalization for continuous variables."""
-    arr = np.clip(arr, min_val, max_val)
-    return (arr - min_val) / (max_val - min_val)
+    arr = np.clip(arr, min_spec, max_spec)
+    return (arr - min_spec) / (max_spec - min_spec)
+
 
 NORMALIZE_FUNCS = {
     "optical": _normalize_optical,
@@ -121,8 +123,8 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     logger.info(f"Received data with shape: {cube.shape}, dims: {cube.dims}")
 
     # --- Validate & reorder bands in one call ---
-    #expected_bands = get_expected_bands()
-    #validate_bands(cube, expected_bands)
+    expected_bands = get_expected_bands()
+    validate_bands(cube, expected_bands)
 
     # --- Normalization logic stays unchanged ---
     band_names = list(cube.coords["bands"].values)
@@ -139,9 +141,9 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
         for g, specs in NORMALIZATION_SPECS.items():
             if band in specs:
                 group = g
-                min_val, max_val = specs[band]
+                min_spec, max_spec = specs[band]
                 norm_func = NORMALIZE_FUNCS[group]
-                normalized = norm_func(arr, min_val, max_val)
+                normalized = norm_func(arr, min_spec, max_spec)
                 post_stats = (normalized.min(), normalized.max(), normalized.mean())
                 logger.info(
                     f"Band {band}: group={group}, "
