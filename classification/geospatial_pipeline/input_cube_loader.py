@@ -4,20 +4,27 @@ from openeo import UDF, DataCube, Connection
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Union
+import numpy as np
+from openeo.processes import quantiles
+
 
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
 UDF_DIR = BASE_DIR / 'UDF'
+QUANTILE = 0.90
+
+
 
 
 def load_sentinel2(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
-    max_cloud_cover: int = 70,
-    resolution: int = 10,
-    crs: str = 'EPSG:3035'
+    max_cloud_cover: int,
+    resolution: int,
+    quantile: float,
+    crs: str
 ) -> DataCube:
     """
     Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
@@ -57,7 +64,7 @@ def load_sentinel2(
 
     mask = scl.process('to_scl_dilation_mask', data=scl)
     s2 = s2.mask(mask)
-    return s2.aggregate_temporal_period(period = 'year', reducer = 'median')
+    return s2.aggregate_temporal_period(period = 'year', reducer = lambda data: quantiles(data, probabilities=[quantile]))
 
 
 def compute_vegetation_indices(cube: DataCube) -> DataCube:
@@ -103,6 +110,7 @@ def load_sentinel1(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     resolution: int,
+    quantile: float,
     crs: str
 ) -> DataCube:
     """
@@ -139,7 +147,7 @@ def load_sentinel1(
 
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
     
-    return s1.aggregate_temporal_period(period = 'year', reducer = 'median')
+    return s1.aggregate_temporal_period(period = 'year', reducer = lambda data: quantiles(data, probabilities=[quantile]))
 
 #TODO need to double check if we get a smooth output
 def compute_lonlat(
@@ -213,6 +221,7 @@ def load_input_cube(
     temporal_extent: List[str],
     max_cloud_cover: int = 85,
     resolution: int = 10,
+    quantile: float = 0.5,
     crs: str = "EPSG:3035"
 ) -> DataCube:
     """
@@ -231,8 +240,8 @@ def load_input_cube(
         DataCube: Final merged and normalized data cube.
     """
     # Load all sources
-    s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
-    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
+    s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, quantile, crs)
+    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, quantile, crs)
     veg_indices = compute_vegetation_indices(s2)
     lonlat = compute_lonlat(s2, spatial_extent, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
