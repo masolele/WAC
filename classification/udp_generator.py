@@ -1,17 +1,24 @@
-# pipeline_builder.py
+#%% pipeline_builder.py
 from pathlib import Path
+from typing import Callable
 import json
+
+
 from openeo import Connection, DataCube
 from openeo.api.process import Parameter
 from openeo.rest.udp import build_process_dict
-from typing import Callable
 
-import config
+
+import config as config
 from geospatial_pipeline.input_cube_loader import load_input_cube
 from geospatial_pipeline.onnx_inference import run_inference
 from geospatial_pipeline.band_normalization import normalize_cube
 
+SPATIAL_PARAM = Parameter.spatial_extent(name="spatial_extent in utm projection", default=config.SPATIAL_EXTENT)
+TEMPORAL_PARAM = Parameter.temporal_interval(name="temporal_extent", default=config.TEMPORAL_EXTENT)
+CRS_PARAM = Parameter.string(name = "crs in UTM projection", default = config.CRS)
 
+#%%
 def create_classification_cube(conn: Connection) -> DataCube:
     """
     Load data, preprocess, and run inference in a single pipeline.
@@ -22,19 +29,20 @@ def create_classification_cube(conn: Connection) -> DataCube:
     Returns:
         DataCube: Inference results cube with renamed class probability bands.
     """
+
+
     # Load and preprocess data
     cube = load_input_cube(
         conn,
-        spatial_extent=config.SPATIAL_EXTENT,
-        temporal_extent=config.TEMPORAL_EXTENT,
+        spatial_extent=SPATIAL_PARAM,
+        temporal_extent=TEMPORAL_PARAM,
         max_cloud_cover=config.MAX_CLOUD_COVER,
         resolution=config.RESOLUTION,
-        crs=config.CRS
+        crs=CRS_PARAM
     )
 
     #UDF based normalisation
     cube_normalised = normalize_cube(cube)
-
 
     # Run inference
     inference_cube = run_inference(
@@ -45,8 +53,8 @@ def create_classification_cube(conn: Connection) -> DataCube:
     )
 
     # Rename bands to probability labels
-    class_labels = [f"prob_class_{c}" for c in range(config.N_CLASSES)] + ['classification']
-    return inference_cube.rename_labels(dimension='bands', target=class_labels)
+    class_labels = [config.CLASS_MAPPING[i] for i in sorted(config.CLASS_MAPPING)] + ["ARGMAX"]
+    return  inference_cube.rename_labels(dimension='bands', target=class_labels)
 
 
 def generate_udp(conn: Connection,
@@ -68,21 +76,16 @@ def generate_udp(conn: Connection,
     Returns:
         dict: The complete UDP process dictionary.
     """
-
-    # Define parameters with defaults from config
-    spatial_extent = Parameter.spatial_extent(name="spatial_extent",default=config.SPATIAL_EXTENT)
-    temporal_extent = Parameter.temporal_interval(name="temporal_extent",default=config.TEMPORAL_EXTENT)
     
     # Connect and build the data cube (could be just to get the process graph)
     datacube = build_cube_fn(conn)
-
 
     # Build the UDP process dictionary
     udp_dict = build_process_dict(
         process_graph=datacube,
         process_id=process_id,
         summary=summary,
-        parameters=[spatial_extent, temporal_extent],
+        parameters=[SPATIAL_PARAM, TEMPORAL_PARAM, CRS_PARAM],
         default_job_options=config.JOB_OPTIONS,
     )
 
@@ -96,3 +99,23 @@ def generate_udp(conn: Connection,
 
     print(f"Saved UDP JSON to {output_path}")
     return udp_dict
+
+#%%
+import openeo
+conn = openeo.connect("https://openeo.dataspace.copernicus.eu/")
+conn.authenticate_oidc()
+
+cube = create_classification_cube(
+        conn
+    )
+
+UDPdir = Path('C:/Git_projects/WAC/classification/UDP/')
+
+generate_udp(conn=conn,
+    build_cube_fn = create_classification_cube,  # <-- pass function, not result
+    process_id =  'wac_inference_africa',
+    summary = 'wac_inference_africa',
+    output_dir = UDPdir)
+
+#%%
+

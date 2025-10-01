@@ -2,9 +2,12 @@
 
 from openeo import UDF, DataCube, Connection
 from pathlib import Path
-from datetime import datetime, timedelta
 from typing import Dict, List, Union
+<<<<<<< Updated upstream
 
+=======
+from openeo.processes import quantiles, date_shift,array_element
+>>>>>>> Stashed changes
 
 # Determine script directory
 BASE_DIR = Path().parent.resolve()
@@ -122,15 +125,14 @@ def load_sentinel1(
     Returns:
         DataCube: Sentinel-1 log-transformed image cube.
     """
-    orig_start = datetime.strptime(temporal_extent[0], "%Y-%m-%d")
-    extended_start = (orig_start - timedelta(days=1)).strftime("%Y-%m-%d")
-    extended_temporal = [extended_start, temporal_extent[1]]
 
+    orig_start = array_element(temporal_extent,index=0)
+    shifted_end = date_shift(array_element(temporal_extent,index=1), unit="month",value=1)
 
     s1 = (
         conn.load_collection(
             'SENTINEL1_GLOBAL_MOSAICS',
-            temporal_extent=extended_temporal,
+            temporal_extent=[orig_start, shifted_end],
             spatial_extent=spatial_extent,
             bands=['VV','VH']
         )
@@ -144,7 +146,6 @@ def load_sentinel1(
 #TODO validate output
 def compute_latlon(
     sentinel2: DataCube,
-    spatial_extent: Dict[str, Union[float, str]],
     resolution: int,
     crs: str
 ) -> DataCube:
@@ -162,11 +163,7 @@ def compute_latlon(
     """
     # Inline UDF loading
     context = {
-        'west': spatial_extent['west'],
-        'south': spatial_extent['south'],
-        'east': spatial_extent['east'],
-        'north': spatial_extent['north'],
-        'crs': spatial_extent['crs']
+        'crs': crs
     }
     udf_latlon = UDF.from_file(UDF_DIR / 'udf_lat_lon.py', context=context)
 
@@ -234,7 +231,11 @@ def load_input_cube(
     s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, resolution, crs)
     s1 = load_sentinel1(conn, spatial_extent, temporal_extent, resolution, crs)
     veg_indices = compute_vegetation_indices(s2)
+<<<<<<< Updated upstream
     latlon = compute_latlon(s2, spatial_extent, resolution, crs)
+=======
+    lonlat = compute_lonlat(s2, resolution, crs)
+>>>>>>> Stashed changes
     dem = load_dem(conn, spatial_extent, resolution, crs)
     
     output = s2.merge_cubes(s1).merge_cubes(dem).merge_cubes(latlon).merge_cubes(veg_indices)
