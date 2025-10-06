@@ -2,6 +2,8 @@ TEMPORAL_EXTENT = ['2023-01-01', '2024-01-01']
 
 #coffee
 CRS = "EPSG:32629" 
+RESOLUTION = 10  # important; the resolution is implicitely tied to the CRS; so we need to use UTM based CRS here
+
 
 SPATIAL_EXTENT = {
     'west': 677736,
@@ -44,10 +46,7 @@ CLASS_MAPPING = {
 MODEL_NAME = "best_weights_att_unet_lagtime_5_Fused3_2023_totalLoss6V1_without_loss_sentAfrica6"
 
 MAX_CLOUD_COVER = 75
-QUANTILE = 0.8
-
-
-RESOLUTION = 10  # important; the resolution is implicitely tied to the CRS; so we need to use UTM based CRS here
+QUANTILE = 0.95
 
 PATCH_SIZE = 128
 OVERLAP_SIZE = 32

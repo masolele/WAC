@@ -2,48 +2,49 @@ import numpy as np
 import xarray as xr
 import logging
 from pyproj import Transformer
-from typing import Dict
+from openeo.udf import XarrayDataCube
 
 # Setup logging
 def _setup_logging() -> logging.Logger:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     return logging.getLogger(__name__)
 
+from openeo.udf.udf_data import UdfData
+
+
 logger = _setup_logging()
 
-def apply_datacube(cube: xr.DataArray, context: Dict) -> xr.DataArray:
-    """
-    Constructs a lon/lat grid as a new DataArray based on the cube's spatial resolution
-    and the geographic extent provided in `context`.
+def apply_udf_data(udf_data: UdfData) -> UdfData:
+    """This is the actual openeo UDF that will be executed by the backend."""
 
-    Args:
-        cube (xr.DataArray): Input data cube with 'x' and 'y' dimensions.
-        context (dict): Dictionary containing ''crs'.
+    cube = udf_data.datacube_list[0]
+    arr = cube.get_array().transpose("bands", "y", "x")
 
-    Returns:
-        xr.DataArray: A new DataArray of shape (2, y, x) with bands ['lon', 'lat'].
-    """
+    crs = udf_data.proj
+    if crs is not None:
+        crs = crs["EPSG"]
 
+    logger.info(f"EPSG code determined for feature extraction: {crs}")
 
-    crs   = context["crs"]
     transformer = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-    longitudes, latitudes = transformer.transform(cube.x, cube.y)
+    longitudes, latitudes = transformer.transform(arr.x, arr.y)
     lon_grid, lat_grid = np.meshgrid(longitudes, latitudes)
-
-    logger.info(f"Cube x range: {cube.x.min().values}, {cube.x.max().values}")
-    logger.info(f"Cube y range: {cube.y.min().values}, {cube.y.max().values}")
 
     logger.info(f"Transformed longitudes range: {longitudes.min()}, {longitudes.max()}")
     logger.info(f"Transformed latitudes range: {latitudes.min()}, {latitudes.max()}")
 
-    
-    # Build output DataArray
-    return xr.DataArray(
+    combined = xr.DataArray(
         data=np.stack([lon_grid, lat_grid], axis=0),  # shape: (2, y, x)
         dims=("bands", "y", "x"),
         coords={
             "bands": ["lon", "lat"],
-            "x": cube.coords["x"],
-            "y": cube.coords["y"]
+            "x": arr.coords["x"],
+            "y": arr.coords["y"]
         }
     )
+
+    cube_output = XarrayDataCube(combined)    
+    udf_data.datacube_list = [cube_output]
+
+    return udf_data
+
