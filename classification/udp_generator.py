@@ -12,8 +12,9 @@ from geospatial_pipeline.input_cube_loader import load_input_cube
 from geospatial_pipeline.onnx_inference import run_inference
 from geospatial_pipeline.band_normalization import normalize_cube
 
-SPATIAL_PARAM = Parameter.spatial_extent(name="spatial_extent", description= 'spatial extent including crs', default=config.SPATIAL_EXTENT)
+SPATIAL_PARAM = Parameter.spatial_extent(name="spatial_extent", description= 'spatial extent in UTM coordinates', default=config.SPATIAL_EXTENT)
 TEMPORAL_PARAM = Parameter.temporal_interval(name="temporal_extent", default=config.TEMPORAL_EXTENT)
+CRS_PARAM = Parameter.string(name="crs", description= 'CRS of the output in ', default=config.CRS)
 #%%
 def create_classification_cube(conn: Connection) -> DataCube:
     """
@@ -32,7 +33,9 @@ def create_classification_cube(conn: Connection) -> DataCube:
         spatial_extent=SPATIAL_PARAM,
         temporal_extent=TEMPORAL_PARAM,
         max_cloud_cover=config.MAX_CLOUD_COVER,
-        quantile = config.QUANTILE        
+        quantile=config.QUANTILE,
+        resolution=config.RESOLUTION,
+        crs=CRS_PARAM
     )
 
     #UDF based normalisation
@@ -79,7 +82,7 @@ def generate_udp(conn: Connection,
         process_graph=datacube,
         process_id=process_id,
         summary=summary,
-        parameters=[SPATIAL_PARAM, TEMPORAL_PARAM],
+        parameters=[SPATIAL_PARAM, TEMPORAL_PARAM, CRS_PARAM],
         default_job_options=config.JOB_OPTIONS,
     )
 
@@ -111,4 +114,15 @@ generate_udp(conn=conn,
     summary = 'wac_inference_africa',
     output_dir = UDPdir)
 
+#%%
+import openeo
+import config as config
+conn = openeo.connect("https://openeo.dataspace.copernicus.eu/")
+conn.authenticate_oidc()
+
+cube = conn.datacube_from_json('C:/Git_projects/WAC/classification/UDP/wac_inference_africa.json',
+                                parameters = {'spatial_extent': config.SPATIAL_EXTENT,
+                                              'temporal_extent': config.TEMPORAL_EXTENT,
+                                              'crs': config.CRS})
+cube = cube.save_result(format="NetCDF")
 

@@ -14,7 +14,9 @@ def load_sentinel2(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     max_cloud_cover: int,
-    quantile: float
+    quantile: float,
+    resolution: int,
+    crs: str
 ) -> DataCube:
     """
     Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
@@ -38,6 +40,7 @@ def load_sentinel2(
             bands=["B02","B03","B04","B05","B06","B07","B08","B11","B12"],
             max_cloud_cover=max_cloud_cover
         )
+        .resample_spatial(resolution=resolution, projection=crs)
     )
 
     scl = (
@@ -48,6 +51,7 @@ def load_sentinel2(
             bands=["SCL"],
             max_cloud_cover=max_cloud_cover
         )
+        .resample_spatial(resolution=resolution, projection=crs)
     )
 
     mask = scl.process('to_scl_dilation_mask', data=scl)
@@ -89,6 +93,7 @@ def compute_vegetation_indices(cube: DataCube) -> DataCube:
     output = ndvi.merge_cubes(ndre)
     output = output.merge_cubes(evi)
     
+    
     # Add dimension labels
     return output
 
@@ -98,6 +103,8 @@ def load_sentinel1(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     quantile: float,
+    resolution: int,
+    crs: str
 ) -> DataCube:
     """
     Load Sentinel-1 VV/VH mosaics and apply log transformation.
@@ -117,7 +124,7 @@ def load_sentinel1(
         DataCube: Sentinel-1 log-transformed image cube.
     """
     orig_start = array_element(temporal_extent,index=0)
-    shifted_end = date_shift(array_element(temporal_extent,index=1), unit="month",value=1)
+    shifted_end = date_shift(array_element(temporal_extent,index=1), unit="day",value=1)
 
     s1 = (
         conn.load_collection(
@@ -126,6 +133,7 @@ def load_sentinel1(
             spatial_extent=spatial_extent,
             bands=['VV','VH']
         )
+        .resample_spatial(resolution=resolution, projection=crs)
     )
 
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
@@ -135,6 +143,8 @@ def load_sentinel1(
 #TODO need to double check if we get a smooth output
 def compute_lonlat(
     sentinel2: DataCube,
+    resolution: int,
+    crs: str
 ) -> DataCube:
     """
     Calculates lat/lon values for the given spatial extent.
@@ -155,6 +165,7 @@ def compute_lonlat(
     latlon = (
         sentinel2
         .apply(process=udf_lonlat)
+        .resample_spatial(resolution=resolution, projection=crs)
         .rename_labels('bands', ['lon','lat'])
     )
 
@@ -164,6 +175,8 @@ def compute_lonlat(
 def load_dem(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
+    resolution: int,
+    crs: str
 ) -> DataCube:
     """
     Load Digital Elevation Model (DEM) data and temporally reduce it if needed.
@@ -179,6 +192,7 @@ def load_dem(
     """
     dem = (
         conn.load_collection('COPERNICUS_30', spatial_extent=spatial_extent)
+        .resample_spatial(resolution=resolution, projection=crs, method='bilinear')
     )
     if dem.metadata.has_temporal_dimension():
         dem = dem.reduce_dimension(dimension='t', reducer='max')
@@ -189,6 +203,8 @@ def load_input_cube(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
+    crs: str,
+    resolution: int = 10,
     max_cloud_cover: int = 85,
     quantile: float = 0.75,
     
@@ -209,11 +225,11 @@ def load_input_cube(
         DataCube: Final merged and normalized data cube.
     """
     # Load all sources
-    s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, quantile)
-    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, quantile)
+    s2 = load_sentinel2(conn, spatial_extent, temporal_extent, max_cloud_cover, quantile, resolution, crs)
+    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, quantile, resolution, crs)
     veg_indices = compute_vegetation_indices(s2)
-    lonlat = compute_lonlat(s2)
-    dem = load_dem(conn, spatial_extent)
+    lonlat = compute_lonlat(s2, resolution, crs)
+    dem = load_dem(conn, spatial_extent, resolution, crs)
 
     output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem).merge_cubes(lonlat)
 
