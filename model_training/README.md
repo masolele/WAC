@@ -17,15 +17,15 @@ The model is an Attention U-Net with fusion mechanisms, specifically designed fo
 The model expects a single input tensor with the following specifications:
 
 - **Input Name**: "input"
-- **Shape**: `[1, 64, 64, 15]`
+- **Shape**: `[1, 64, 64, 15] for Latin America, Southeast Asia, and [1, 64, 64, 17] for Africa`
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
-  - Channels: 17 (combined features)
+  - Channels: 15 (combined features - Latin America, Southeast Asia), and 17 (combined features - Africa) 
 - **Data Type**: float32 (elem_type: 1)
 
 ### Input Channel Organization
-The 17 input channels are organized as follows:
+The input channels are organized as follows:
 
 1. **Sentinel-2 Bands** (Channels 0-8):
    - Blue, Green, Red
@@ -43,8 +43,9 @@ The 17 input channels are organized as follows:
    - Longitude (normalized to [-180, 180] range)
    - Latitude (normalized to [-60, 60] range)
 
-4. **Additional Features** (Channel 14):
-   - Derived indices (NDVI, SAVI, EVI, LAI, NDWI)???
+4. **Additional Features**:
+   - Derived indices Latin America, Southeast Asia (NDVI)
+   - Derived indices Africa (NDVI, NDRE, EVI)
 
 ## Output Specifications
 
@@ -53,19 +54,41 @@ The 17 input channels are organized as follows:
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
-  - Classes: 1 (probability distribution over crop type)
+  - Classes: 25 for Africa, 24 for Southeast Asia, 22 Latin America (probability distribution over crop type)
 - **Data Type**: float32 (elem_type: 1)
 
 ### Crop Classes
-The model predicts 1 crop type. Each pixel in the output contains a probability distribution over this class.
+The model predict's probability of multiple crop type. Each pixel in the output contains a probability distribution over each class.
 
 Example format for each pixel:
 ```python
+# Africa model output has 25 classes 
 classes = [
-    # Add crop classes here
-    "class_0",  # e.g., "Oil Palm"
-    "class_1",  # e.g., "Other"
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea, 24: Others
 ]
+
+# Southeast Asia model output has 24 classes
+classes = [
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea
+]
+
+
+# Latin America model output has only 22 classes
+classes = [
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging
+]
+
+To get the probability of a class, you need to set the class value as output, e.g. for class cocoa (class 13), you would set the prediction output as
+model.predict(input_image)[:,:,13], or for coffee (class 8) model.predict(input_image)[:,:,8]
 ```
 
 ## Model Conversion Details
