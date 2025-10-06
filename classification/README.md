@@ -1,43 +1,41 @@
-# Classification Pipeline (WAC Project)
+# Classification Module — WAC
 
-This module is part of the **WAC** project, featuring an Attention U‑Net with multi-input fusion—designed for crop classification using multi-source satellite imagery and geographic features.
+This folder contains the code, notebooks, and configuration for running the **classification / mapping** step of the WAC pipeline.  
+Users must first edit the **`config.py`** to match their region, temporal extent, and model settings before running the workflows.
 
-## Folder Structure & Overview
+---
 
-classification
-  - band_normalization.py        # Preprocessing: normalize satellite bands, radar, and geo-data
-  -  cube_loader.py              # Build input cubes for inference
-  - onnx_inference.py            # Run ONNX model inference
-  - udp_generator.py             # Generate UDP (User-Defined Processing) payloads
-model_conversion                 # Scripts for converting the TensorFlow model to ONNX
-UDF                              # openEO-compatible user-defined functions
-UDP                              # UDP outputs for integration testing
-config.py         # Configuration file containing all adjustable parameters
+## 🛠️ Setup & Configuration
 
-full_processing_pipeline.ipynb  # End-to-end notebook: full pipeline and UDP creation
+### 1. Edit `config.py`
 
-## Module Descriptions
+Before running any classification workflows, open `config.py` and review/adjust the following important settings:
 
-### classification
-- band_normalization.py: Applies preprocessing routines such as log-transformation and percentile normalization to Sentinel‑2 bands, radar (VV/VH), and geographic features.
-- cube_loader.py: Packages the normalized data into the input tensor expected by the ONNX model with shape [1, 64, 64, 17 feature channels].
-- onnx_inference.py: Runs inference using the ONNX model, accepting the formatted input cube.
-- udp_generator.py: Creates a UDP payload for downstream use and integration testing.
+| Parameter | Purpose | What You Need to Do |
+|---|---|---|
+| `xmin`, `xmax`, `ymin`, `ymax` , `epsg` | Spatial bounding box (in UTM coordinates) for your target area | Change these to the UTM (eastings / northings) bounds covering your study region | The area should maximally be 20kmx20km
+| `t0` (or `start_date`), `t1` (or `end_date`) | Temporal extent for the classification (time window of observations) | Set to the start and end dates you want the model to consider; the model was trained expecting a full year of input data|
+`epsg` | Coordinate Reference System / UTM zone of th eoutput | Ensure this matches the correct UTM zone for your region |
+| `model_name` (or equivalent) | Which model to apply | Currently we only have the africa model onboarded. Future models may be selectable here. |
 
-### model_conversion
-Contains scripts to convert the original TensorFlow model (TF 2.10.0) into an ONNX model with IR v7, opset v13.
 
-### UDF
-Houses openEO-compatible user-defined functions for modular remote processing. These UDFs are used for the dedicated band normalisation lat-lon calculation and orchestrating the model inference
+## 🧪 Running the Pipeline via Notebooks
 
-### UDP
-Contains generated UDPs.
+After configuring `config.py`, you can run the full classification pipeline using the provided notebooks (e.g. `full_processing_pipeline.ipynb`).
 
-### Configuration
-Central configuration file which contains all adjustable parameters.
+### Steps:
 
-### Notebook – Full Pipeline
-The full_processing_pipeline.ipynb notebook walks through preprocessing, inference, UDP generation, and visualization.
+1. **Open the notebook**  
+   Use Jupyter / JupyterLab / VSCode to open `full_processing_pipeline.ipynb` (or similar).  
+   Make sure the working directory is set properly (so relative paths resolve).
+
+2. **Run all cells in order**  
+   The notebook is intended to run steps such as:
+   - Preprocessing / data loading  
+   - Classification inference  
+   - Output stitching & export  
+   - (Optional) Visualization or basic validation  
+
 
 ### Prerequisites
 - Python 3.x   
