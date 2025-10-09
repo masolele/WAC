@@ -33,6 +33,8 @@ NORMALIZATION_SPECS = {
     },
 }
 
+OPTIONAL_BANDS = ["NDRE", "EVI"]
+
 
 def _normalize_optical(arr: np.ndarray, min_spec: float, max_spec: float) -> np.ndarray:
     """Log-based normalization for optical bands."""
@@ -64,37 +66,24 @@ def get_expected_bands() -> List[str]:
     return expected
 
 def validate_bands(cube: xr.DataArray, expected_bands: list):
-    """
-    Validate presence and order of required bands in a data cube.
-    
-    Ensures that:
-      1. All required bands are present.
-      2. Bands are in the correct order.
-
-    Args:
-        cube (xr.DataArray):
-            Input data cube with a 'bands' coordinate.
-        expected_bands (list):
-            Ordered list of band names required for processing.
-
-    Returns:
-        xr.DataArray:
-            Data cube with bands in the correct order.
-
-    Raises:
-        ValueError: If any required bands are missing.
-    """
     band_names = list(cube.coords["bands"].values)
     logger.info(f"Input bands: {band_names}")
 
-    # Check for missing bands
-    missing_bands = [b for b in expected_bands if b not in band_names]
+    # Check for missing required bands
+    missing_bands = [b for b in expected_bands if b not in band_names and b not in OPTIONAL_BANDS]
     if missing_bands:
         raise ValueError(f"Missing required bands: {missing_bands}. Got: {band_names}")
 
-    # Reorder if needed
-    if band_names != expected_bands:
-        raise ValueError(f"Band order mismatch: {band_names} vs {expected_bands}")
+    # Warn about missing optional bands
+    missing_optional = [b for b in OPTIONAL_BANDS if b not in band_names]
+    if missing_optional:
+        logger.warning(f"Optional bands missing (will skip normalization): {missing_optional}")
+
+    # Only enforce order for required bands
+    required_bands_in_cube = [b for b in band_names if b not in OPTIONAL_BANDS]
+    expected_required_order = [b for b in expected_bands if b not in OPTIONAL_BANDS]
+    if required_bands_in_cube != expected_required_order:
+        raise ValueError(f"Band order mismatch for required bands: {required_bands_in_cube} vs {expected_required_order}")
 
 
 
@@ -126,7 +115,6 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     expected_bands = get_expected_bands()
     validate_bands(cube, expected_bands)
 
-    # --- Normalization logic stays unchanged ---
     band_names = list(cube.coords["bands"].values)
     logger.info(f"Normalizing bands: {band_names}")
 
@@ -136,6 +124,7 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     for band in band_names:
         arr = img_values[band_names.index(band)]
         pre_stats = (arr.min(), arr.max(), arr.mean())
+        
         # Find which group this band belongs to
         group = None
         for g, specs in NORMALIZATION_SPECS.items():

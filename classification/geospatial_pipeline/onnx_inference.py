@@ -28,7 +28,7 @@ def run_inference(
     """
 
     context = {
-        'model_path': f"dynamic_models//{model_name}.onnx"
+        'model_path': f"att_unet_wac//{model_name}.onnx"
     }
 
     udf_inference = UDF.from_file(UDF_DIR / 'udf_inference.py', context=context)

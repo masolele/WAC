@@ -28,6 +28,42 @@ def _load_ort_session(model_name: str) -> ort.InferenceSession:
     """Loads an ONNX model and returns a cached ONNX runtime session."""
     return ort.InferenceSession(f"onnx_models/{model_name}")
 
+def _get_expected_band_count(session: ort.InferenceSession) -> int:
+    """
+    Detect the expected number of input bands from the ONNX model input shape.
+    Handles both channels-last (1, H, W, C) and channels-first (1, C, H, W).
+    """
+    shape = session.get_inputs()[0].shape
+    logger.info(f"Model input shape from ONNX: {shape}")
+
+    # Extract numeric dimensions (ignore None or dynamic names)
+    numeric_dims = [dim for dim in shape if isinstance(dim, int)]
+    logger.info(f"Numeric input dimensions: {numeric_dims}")
+
+    if not numeric_dims:
+        raise ValueError(f"Cannot determine band count from shape: {shape}")
+
+    # Assume the last numeric dimension is the band count
+    band_count = numeric_dims[-1]
+    logger.info(f"Model expects {band_count} input bands.")
+    return band_count
+
+
+def _drop_optional_bands_by_name(cube: xr.DataArray) -> xr.DataArray:
+    """
+    Drop NDRE and EVI bands by name, if present.
+    """
+    drop_bands = ["NDRE", "EVI"]
+    band_names = cube.coords["bands"].values
+
+    to_drop = [b for b in drop_bands if b in band_names]
+    if not to_drop:
+        logger.info("No optional bands found to drop.")
+        return cube
+
+    logger.info(f"Dropping optional bands by name: {to_drop}")
+    return cube.sel(bands=[b for b in band_names if b not in to_drop])
+
 def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, xr.Coordinate], np.ndarray]:
     """
     Prepare the input cube for inference:
@@ -43,7 +79,7 @@ def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, xr.Coord
     mask_invalid = ~np.isfinite(values)
 
     # Replace NaN with 0, inf with large sentinel
-    sanitized = np.where(np.isnan(values), 0.0, values)
+    sanitized = np.where(np.isnan(values), 0.0, values) #TODO validate if this is okay
     sanitized = np.where(np.isposinf(sanitized), _INF_REPLACEMENT, sanitized)
     sanitized = np.where(np.isneginf(sanitized), _NEG_INF_REPLACEMENT, sanitized)
 
@@ -105,23 +141,31 @@ def postprocess_output(
     )
 
 
-
 def apply_model(
     cube: xr.DataArray,
     model_path: str
 ) -> xr.DataArray:
     """
-    Full inference pipeline: preprocess, infer, postprocess.
+    Full inference pipeline:
+      - Read ONNX model input shape
+      - If model expects 15 bands → drop NDRE/EVI by name
+      - Preprocess → infer → postprocess
     """
-    input_tensor, coords, mask_invalid = preprocess_image(cube)
     session = _load_ort_session(model_path)
+    expected_bands = _get_expected_band_count(session)
+
+    band_names = cube.coords["bands"].values
+    logger.info(f"Cube has {len(band_names)} bands: {band_names}")
+
+    if expected_bands == 15:
+        cube = _drop_optional_bands_by_name(cube)
+    elif expected_bands not in (15, 17):
+        logger.warning(f"Unexpected band count {expected_bands}, expected 15 or 17.")
+
+    input_tensor, coords, mask_invalid = preprocess_image(cube)
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
-    
-    #TODO evaluate reprocessing
-    result = postprocess_output(raw_pred, coords, mask_invalid)
-    #logger.info(f"apply_model result shape={result.shape}")
-    return result
+    return postprocess_output(raw_pred, coords, mask_invalid)
 
 
 def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
