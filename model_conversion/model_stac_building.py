@@ -32,11 +32,7 @@ config = {
     "username": "hans.vanrompay@vito.be",  # Terrascope username
 }
 
-
-
 class VitoStacApiAuthentication(AuthBase):
-    """Class that handles authentication for the VITO STAC API."""
-    
     def __init__(self, username, password):
         self.username = username
         self.password = password
@@ -49,16 +45,13 @@ class VitoStacApiAuthentication(AuthBase):
         return request
 
     def get_access_token(self) -> str:
-        """Get API bearer access token via password flow."""
         provider_info = OidcProviderInfo(
             issuer="https://sso.terrascope.be/auth/realms/terrascope"
         )
-
         client_info = OidcClientInfo(
             client_id="terracatalogueclient",
             provider=provider_info,
         )
-
         if self.username and self.password:
             authenticator = OidcResourceOwnerPasswordAuthenticator(
                 client_info=client_info, username=self.username, password=self.password
@@ -68,20 +61,48 @@ class VitoStacApiAuthentication(AuthBase):
         else:
             raise ValueError("Credentials are required to obtain an access token.")
 
+def collection_exists(catalog_url, collection_id, auth):
+    """Check if collection exists"""
+    try:
+        response = requests.get(f"{catalog_url}/collections/{collection_id}", auth=auth)
+        return response.status_code == 200
+    except:
+        return False
+
+def create_collection_with_auth(catalog_url, collection, auth):
+    """Create collection with proper authorization structure like your colleague's example"""
+    coll_dict = collection.to_dict()
+    
+    # Clear links that might cause issues
+    if "links" in coll_dict:
+        coll_dict["links"] = []
+    
+    # Add the _auth field that your colleague's working code uses
+    coll_dict.setdefault("_auth", {"read": ["anonymous"], "write": ["stac-admin-prod"]})
+    
+    print("Attempting to create collection...")
+    response = requests.post(
+        f"{catalog_url}/collections",
+        auth=auth,
+        json=coll_dict
+    )
+    
+    if response.status_code in [200, 201]:
+        print(f"Collection created: {collection.id}")
+        return True
+    else:
+        print(f"Failed to create collection: {response.status_code} - {response.text}")
+        return False
+
 def load_model_metadata(csv_path):
-    """Load and parse the model metadata CSV"""
     df = pd.read_csv(csv_path)
     
-    # Convert string representations back to lists
     if 'input_channels' in df.columns:
         df['input_channels'] = df['input_channels'].apply(lambda x: [item.strip() for item in x.split(',')] if pd.notna(x) else [])
-    
     if 'output_classes' in df.columns:
         df['output_classes'] = df['output_classes'].apply(lambda x: [item.strip() for item in x.split(',')] if pd.notna(x) else [])
-    
     if 'countries_covered' in df.columns:
         df['countries_covered'] = df['countries_covered'].apply(lambda x: [item.strip() for item in x.split(',')] if pd.notna(x) else [])
-    
     if 'bbox' in df.columns:
         df['bbox'] = df['bbox'].apply(lambda x: [float(i) for i in x.strip('[]').split(',')] if pd.notna(x) else [])
     
@@ -89,27 +110,21 @@ def load_model_metadata(csv_path):
     return df
 
 def create_geometry_from_bbox(bbox):
-    """Create a geometry from bbox coordinates"""
     return box(bbox[0], bbox[1], bbox[2], bbox[3])
 
 def create_stac_items(df_models, collection_id):
-    """Create STAC items for each model"""
-    
     items = []
     
     for _, model in df_models.iterrows():
         model_id = model['model_id']
         print(f"Creating STAC item: {model_id}")
         
-        # Create geometry from bbox
         bbox = model['bbox']
         geometry = create_geometry_from_bbox(bbox)
         
-        # Parse temporal extent
         start_date = datetime.strptime(model['temporal_start'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
         end_date = datetime.strptime(model['temporal_end'], '%Y-%m-%d').replace(tzinfo=timezone.utc)
         
-        # Create properties - ensure all values are JSON serializable
         properties = {
             "modelID": str(model['model_id']),
             "name": str(model['model_name']),
@@ -129,7 +144,6 @@ def create_stac_items(df_models, collection_id):
             "f1_score_macro": str(model.get('f1_score_macro', 'None')),
         }
         
-        # Create STAC Item
         item = Item(
             id=str(model_id),
             geometry=geometry.__geo_interface__,
@@ -140,7 +154,6 @@ def create_stac_items(df_models, collection_id):
             properties=properties
         )
         
-        # Add model asset
         model_asset = Asset(
             href=str(model['model_url']),
             media_type="application/onnx",
@@ -150,81 +163,57 @@ def create_stac_items(df_models, collection_id):
         )
         item.add_asset('model', model_asset)
         
-        # Set collection ID
         item.collection_id = collection_id
-        
         items.append(item)
-        print(f" Created STAC item: {model_id}")
+        print(f"Created STAC item: {model_id}")
     
     return items
 
-def item_exists(catalog_url, collection_id, item_id, auth):
-    """Check if item already exists"""
-    try:
-        response = requests.get(
-            f"{catalog_url}/collections/{collection_id}/items/{item_id}", 
-            auth=auth
-        )
-        return response.status_code == 200
-    except:
-        return False
-
 def upload_items_simple(catalog_url, collection_id, items, auth):
-    """Upload items - handles both new items and updates"""
     items_url = f"{catalog_url}/collections/{collection_id}/items"
     
     successful = 0
     failed = 0
-    skipped = 0
     
-    print(f"\n Uploading {len(items)} items to collection '{collection_id}'...")
+    print(f"Uploading {len(items)} items to collection '{collection_id}'...")
     
     for item in items:
         try:
-            # Check if item already exists
-            if item_exists(catalog_url, collection_id, item.id, auth):
-                print(f"  {item.id} already exists - skipping")
-                skipped += 1
-                continue
-            
-            # Simple upload like your working example
+            # Clear links for items too, like your colleague's example
+            item_dict = item.to_dict()
+            if "links" in item_dict:
+                item_dict["links"] = []
+                
             response = requests.post(
                 url=items_url,
-                json=item.to_dict(),
+                json=item_dict,
                 auth=auth
             )
             
             if response.status_code in [200, 201]:
-                print(f"  {item.id} uploaded successfully")
+                print(f"{item.id} uploaded successfully")
                 successful += 1
             else:
-                print(f"  {item.id} failed: {response.status_code} - {response.text}")
+                print(f"{item.id} failed: {response.status_code} - {response.text}")
                 failed += 1
                 
         except Exception as e:
-            print(f"  {item.id} error: {e}")
+            print(f"{item.id} error: {e}")
             failed += 1
     
-    print(f"\n Upload summary:")
-    print(f"   Successful: {successful}")
-    print(f"   Skipped (already exist): {skipped}")
-    print(f"   Failed: {failed}")
-    
-    return successful, skipped, failed
+    print(f"Upload summary: {successful} successful, {failed} failed")
+    return successful, failed
 
 def save_stac_locally(collection, items, output_dir):
-    """Save STAC locally for inspection"""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    # Save collection
     collection_path = output_path / "collection.json"
     with open(collection_path, 'w') as f:
         import json
         json.dump(collection.to_dict(), f, indent=2)
     print(f"Collection saved: {collection_path}")
     
-    # Save items
     items_dir = output_path / "items"
     items_dir.mkdir(exist_ok=True)
     
@@ -237,22 +226,17 @@ def save_stac_locally(collection, items, output_dir):
     return output_path
 
 def main():
-    """Main function - focused on uploading items to existing collection"""
-    
     print("Building STAC items from CSV...")
     
     try:
-        # Load model metadata
         df_models = load_model_metadata(config["metadata_csv"])
-        
-        # Create STAC items
         items = create_stac_items(df_models, config["collection_name"])
         
         if not items:
             print("No valid items could be created")
             return
         
-        # Create a minimal collection object for local saving (not for upload)
+        # Create collection object
         collection = Collection(
             id=config["collection_name"],
             title="World Agricultural Commodities Classification Models",
@@ -267,29 +251,35 @@ def main():
             license="proprietary"
         )
         
-        # Save locally first
-        print(f"\nSaving STAC locally...")
+        print("Saving STAC locally...")
         output_path = save_stac_locally(collection, items, config["output_directory"])
         
-        print(f"\nLocal STAC creation completed!")
-        print(f"   Output directory: {output_path}")
-        print(f"   Collection: {config['collection_name']}")
-        print(f"   Items: {len(items)}")
+        print("Local STAC creation completed!")
+        print(f"Output directory: {output_path}")
+        print(f"Collection: {config['collection_name']}")
+        print(f"Items: {len(items)}")
         
-        # Upload to STAC API
-
-        print(f"\n Uploading to STAC API...")
+        print("Uploading to STAC API...")
         password = getpass.getpass("Enter password: ")
-        config["password"] = password
         
-        # Initialize authentication
         auth = VitoStacApiAuthentication(
             username=config["username"],
-            password=config["password"]
+            password=password
         )
         
-        # Upload items to existing collection
-        successful, skipped, failed = upload_items_simple(
+        # Check if collection exists
+        if not collection_exists(config["catalog_url"], config["collection_name"], auth):
+            print(f"Collection '{config['collection_name']}' does not exist. Creating it...")
+            if create_collection_with_auth(config["catalog_url"], collection, auth):
+                print("Collection created successfully")
+            else:
+                print("Failed to create collection. Cannot upload items.")
+                return
+        else:
+            print(f"Collection '{config['collection_name']}' already exists")
+        
+        # Upload items
+        successful, failed = upload_items_simple(
             config["catalog_url"], 
             config["collection_name"], 
             items, 
@@ -297,17 +287,12 @@ def main():
         )
         
         if failed == 0:
-            if successful > 0:
-                print(f"\n STAC item upload completed successfully!")
-                print(f"   {successful} new items added to collection '{config['collection_name']}'")
-            if skipped > 0:
-                print(f"   {skipped} items already exist and were skipped")
+            print(f"STAC deployment completed successfully! {successful} items uploaded.")
         else:
-            print(f"\n STAC item upload partially completed")
-            print(f"   {successful} successful, {skipped} skipped, {failed} failed")
+            print(f"STAC deployment partially completed: {successful} successful, {failed} failed")
                 
     except Exception as e:
-        print(f"\n Error: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
 
