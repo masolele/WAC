@@ -1,22 +1,138 @@
+import os
 import sys
 import functools
-import numpy as np
+import requests
+import tempfile
 import xarray as xr
+import numpy as np
+import hashlib
+import threading
+from typing import Dict , Tuple
 import logging
-from typing import Dict, Tuple
-from scipy.special import expit
+from openeo.metadata import CollectionMetadata
 
 
-# Setup logger
-def _setup_logging():
-    logging.basicConfig(level=logging.INFO)
-    return logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-logger = _setup_logging()
+# Global lock dictionary for thread-safe model downloading
+_model_locks: Dict[str, threading.Lock] = {}
+_model_locks_lock = threading.Lock()  # Lock for managing the lock dictionary
+
+def get_model_lock(model_id: str) -> threading.Lock:
+    """Get or create a lock for a specific model ID (thread-safe)."""
+    with _model_locks_lock:
+        if model_id not in _model_locks:
+            _model_locks[model_id] = threading.Lock()
+        return _model_locks[model_id]
+
+def get_model_cache_path(model_id: str, cache_dir: str = "/tmp/onnx_models") -> str:
+    """Get the cache path for a model, creating directory if needed."""
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # Create a safe filename from model_id
+    model_hash = hashlib.md5(model_id.encode()).hexdigest()
+    return os.path.join(cache_dir, f"{model_hash}.onnx")
+
+def download_model_with_lock(model_id: str, model_url: str, cache_dir: str = "/tmp/onnx_models", 
+                           max_file_size_mb: int = 250) -> str:
+    """
+    Download model with thread locking to prevent concurrent downloads.
+    """
+    cache_path = get_model_cache_path(model_id, cache_dir)
+    
+    # Get the lock for this specific model
+    lock = get_model_lock(model_id)
+    
+    with lock:
+        # Check if model already exists in cache
+        if os.path.exists(cache_path):
+            logger.info(f"Using cached model: {cache_path}")
+            return cache_path
+        
+        # Download the model
+        logger.info(f"Downloading model {model_id} from {model_url}")
+        
+        try:
+            # Create temporary file
+            temp_fd, temp_path = tempfile.mkstemp(suffix=".onnx", dir=cache_dir)
+            
+            try:
+                with os.fdopen(temp_fd, 'wb') as temp_file:
+                    response = requests.get(model_url, stream=True, timeout=300)
+                    response.raise_for_status()
+                    
+                    # Download with size checking
+                    downloaded_size = 0
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            temp_file.write(chunk)
+                            downloaded_size += len(chunk)
+                            if downloaded_size > max_file_size_mb * 1024 * 1024:
+                                raise ValueError(f"Downloaded file exceeds size limit of {max_file_size_mb}MB")
+                
+                # Atomic move from temp file to final location
+                os.rename(temp_path, cache_path)
+                logger.info(f"Successfully downloaded and cached model: {cache_path}")
+                
+            except Exception as e:
+                # Clean up temp file on error
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+                raise ValueError(f"Error downloading model {model_id}: {e}")
+                
+        except Exception as e:
+            logger.error(f"Failed to download model {model_id}: {e}")
+            raise
+            
+    return cache_path
+    
+
+def get_model_from_stac(model_id: str, stac_api_url: str = "https://stac.openeo.vito.be",
+                       cache_dir: str = "/tmp/onnx_models") -> Tuple[str, dict]:
+    """Fetch model file and metadata from STAC API with caching."""
+    try:
+        collection_id = "world-agri-commodities-models"
+        url = f"{stac_api_url}/collections/{collection_id}/items/{model_id}"
+        
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        item = response.json()
+        properties = item.get('properties', {})
+        assets = item.get('assets', {})
+        
+        # Get model URL
+        model_asset = assets.get('model')
+        if not model_asset:
+            raise ValueError(f"No model asset found for {model_id}")
+        
+        model_url = model_asset['href']
+        
+        # Download model with caching and locking
+        model_path = download_model_with_lock(model_id, model_url, cache_dir)
+        
+        metadata = {
+            'input_bands': properties.get('input_channels', []),
+            'output_classes': properties.get('output_classes', []),
+            'output_shape': properties.get('output_shape', 0),
+            'framework': properties.get('framework', 'ONNX'),
+            'region': properties.get('region', 'Unknown'),
+            'model_url': model_url,
+            'cached_path': model_path
+        }
+        
+        logger.info(f"Retrieved model {model_id} with {len(metadata['output_classes'])} output classes")
+        return model_path, metadata
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch model from STAC: {e}")
+        raise
+
 
 # Add ONNX paths
 sys.path.append("onnx_deps")
-sys.path.append("onnx_models")
 import onnxruntime as ort
 
 # Constants for sanitization
@@ -24,45 +140,34 @@ _INF_REPLACEMENT = 1e6
 _NEG_INF_REPLACEMENT = -1e6
 
 @functools.lru_cache(maxsize=1)
-def _load_ort_session(model_name: str) -> ort.InferenceSession:
-    """Loads an ONNX model and returns a cached ONNX runtime session."""
-    return ort.InferenceSession(f"onnx_models/{model_name}")
-
-def _get_expected_band_count(session: ort.InferenceSession) -> int:
-    """
-    Detect the expected number of input bands from the ONNX model input shape.
-    Handles both channels-last (1, H, W, C) and channels-first (1, C, H, W).
-    """
-    shape = session.get_inputs()[0].shape
-    logger.info(f"Model input shape from ONNX: {shape}")
-
-    # Extract numeric dimensions (ignore None or dynamic names)
-    numeric_dims = [dim for dim in shape if isinstance(dim, int)]
-    logger.info(f"Numeric input dimensions: {numeric_dims}")
-
-    if not numeric_dims:
-        raise ValueError(f"Cannot determine band count from shape: {shape}")
-
-    # Assume the last numeric dimension is the band count
-    band_count = numeric_dims[-1]
-    logger.info(f"Model expects {band_count} input bands.")
-    return band_count
+def _load_ort_session(model_id: str) -> Tuple[ort.InferenceSession, dict]:
+    """Loads an ONNX model from STAC and returns session with metadata"""
+    model_path, metadata = get_model_from_stac(model_id)
+    
+    try:
+        session = ort.InferenceSession(model_path)
+        logger.info(f"Loaded ONNX model for {model_id} on path {model_path}")
+        return session, metadata
+    finally:
+        # Clean up temporary file
+        try:
+            os.unlink(model_path)
+        except:
+            pass
 
 
-def _drop_optional_bands_by_name(cube: xr.DataArray) -> xr.DataArray:
-    """
-    Drop NDRE and EVI bands by name, if present.
-    """
-    drop_bands = ["NDRE", "EVI"]
-    band_names = cube.coords["bands"].values
+def apply_motodoto(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
 
-    to_drop = [b for b in drop_bands if b in band_names]
-    if not to_drop:
-        logger.info("No optional bands found to drop.")
-        return cube
+    model_id = context.get("model_id")
+    _, metadata_dict = _load_ort_session(model_id)
+    
+    output_classes = metadata_dict['output_classes'] + ["ARGMAX"]
+    logger.info(f"Applying metadata with output classes: {output_classes}")
+    return metadata.rename_labels(
+        dimension = "bands",
+        target = output_classes
+    )
 
-    logger.info(f"Dropping optional bands by name: {to_drop}")
-    return cube.sel(bands=[b for b in band_names if b not in to_drop])
 
 def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, xr.Coordinate], np.ndarray]:
     """
@@ -143,7 +248,7 @@ def postprocess_output(
 
 def apply_model(
     cube: xr.DataArray,
-    model_path: str
+    model_id: str
 ) -> xr.DataArray:
     """
     Full inference pipeline:
@@ -151,20 +256,25 @@ def apply_model(
       - If model expects 15 bands → drop NDRE/EVI by name
       - Preprocess → infer → postprocess
     """
-    session = _load_ort_session(model_path)
-    expected_bands = _get_expected_band_count(session)
-
-    band_names = cube.coords["bands"].values
-    logger.info(f"Cube has {len(band_names)} bands: {band_names}")
-
-    if expected_bands == 15:
-        cube = _drop_optional_bands_by_name(cube)
-    elif expected_bands not in (15, 17):
-        logger.warning(f"Unexpected band count {expected_bands}, expected 15 or 17.")
+    session, metadata = _load_ort_session(model_id)
+    
+    input_bands = metadata['input_bands']
+    output_classes = metadata['output_classes']
+    
+    logger.info(f"Running inference for model {model_id}")
+    logger.info(f"Input bands: {input_bands}")
+    logger.info(f"Output bands: {output_classes}")
+    
+    # Validate input bands match expectations
+    cube_bands = list(cube.coords["bands"].values)
+    if cube_bands != input_bands:
+        logger.warning(f"Band mismatch. Cube: {cube_bands}, Model: {input_bands}")
+        cube = cube.sel(bands=input_bands)
 
     input_tensor, coords, mask_invalid = preprocess_image(cube)
     input_name = session.get_inputs()[0].name
     raw_pred = run_inference(session, input_name, input_tensor)
+    
     return postprocess_output(raw_pred, coords, mask_invalid)
 
 
@@ -172,17 +282,23 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     """
     Apply ONNX model per timestep in the datacube.
     """
-    logger.info(f"apply_datacube received shape={cube.shape}, dims={cube.dims}")
+    model_id = context.get("model_id")
+    if not model_id:
+        raise ValueError("model_id must be provided in context")
 
-    model_path  = str(context.get("model_path" ))
-
-    logger.info(f"Applying model: {model_path}")
+    logger.info(f"Applying model from STAC: {model_id}")
 
     cube = cube.transpose('y', 'x', 'bands', 't')
 
     if 't' in cube.dims:
         logger.info("Applying model per timestep via groupby-map.")
-        return cube.groupby('t').map(lambda da: apply_model(da,  model_path))
+        return cube.groupby('t').map(lambda da: apply_model(da,  model_id))
     else:
         logger.info("Single timestep: applying model once.")
-        return apply_model(cube,  model_path)
+        return apply_model(cube,  model_id)
+
+
+
+
+
+

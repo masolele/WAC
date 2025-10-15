@@ -4,6 +4,8 @@ import logging
 import requests
 import functools
 from typing import List
+from openeo.metadata import CollectionMetadata
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -172,3 +174,19 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     )
     logger.info(f"Normalization complete for model {model_id}")
     return da
+
+
+def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
+
+    model_id = context.get("model_id")
+  
+    # Fetch model metadata from STAC
+    model_metadata = get_model_metadata_from_stac(model_id)
+    input_bands = model_metadata.get('input_bands', []) 
+
+    logger.info(f"Applying metadata with input bands: {input_bands}")
+    return metadata.rename_labels(
+        dimension = "bands",
+        target = input_bands
+    )
+
