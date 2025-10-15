@@ -156,7 +156,7 @@ def _load_ort_session(model_id: str) -> Tuple[ort.InferenceSession, dict]:
             pass
 
 
-def apply_motodoto(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
+def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
 
     model_id = context.get("model_id")
     _, metadata_dict = _load_ort_session(model_id)
