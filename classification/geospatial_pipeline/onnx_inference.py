@@ -7,7 +7,7 @@ UDF_DIR = Path(__file__).parent.parent.resolve() / 'UDF'
 #TODO automate patch_size
 def run_inference(
     input_cube: DataCube,
-    model_name: str,
+    model_id: str,
     patch_size: int = 64,
     overlap: int = 0
 ) -> DataCube:
@@ -28,7 +28,7 @@ def run_inference(
     """
 
     context = {
-        'model_path': f"dynamic_models//{model_name}.onnx"
+        'model_id': model_id
     }
 
     udf_inference = UDF.from_file(UDF_DIR / 'udf_inference.py', context=context)

@@ -7,6 +7,7 @@ UDF_DIR = Path(__file__).parent.parent.resolve() / 'UDF'
 #TODO automate patch_size
 def normalize_cube(
     input_cube: DataCube,
+    model_id: str,
 ) -> DataCube:
     """
     Normalize all bands in the input data cube using predefined normalization 
@@ -36,8 +37,11 @@ def normalize_cube(
     """
 
 
+    context = {
+        'model_id': model_id
+    }
 
-    udf_norm = UDF.from_file(UDF_DIR / 'udf_normalise.py')
+    udf_norm = UDF.from_file(UDF_DIR / 'udf_normalise.py', context=context)
 
     output =  input_cube.apply(process=udf_norm)
     return output
