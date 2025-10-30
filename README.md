@@ -4,10 +4,10 @@ This repository contains code, models, and utilities developed under the **World
 
 ## Project Goals
 
-- Map commodity parcels & crop types over demonstration sites  
-- Detect deforestation / land conversion after December 2020  
-- Provide scalable, open, reproducible methods for EU Member States by making use of **openEO** and **CDSE**  
-- Validate algorithms and support national uptake  
+- Map commodity parcels & crop types over demonstration sites
+- Detect deforestation / land conversion after December 2020
+- Provide scalable, open, reproducible methods for EU Member States by making use of **openEO** and **CDSE**
+- Validate algorithms and support national uptake
 
 ## Repository Structure
 
@@ -15,16 +15,16 @@ Below is an example structure. You should adjust to match what you currently hav
 
 ```
 WAC/
-├── classification/         # Scripts for performing commodity classification tasks  
-├── in_situ/                # [experimental] scripts for onboarding in-situ training data 
-├── model_training/         # scripts detailing the model architecture definitions, training scripts, utilities  
-├── requirements.txt        # Python dependencies  
+├── classification/         # Scripts for performing commodity classification tasks
+├── in_situ/                # [experimental] scripts for onboarding in-situ training data
+├── model_training/         # scripts detailing the model architecture definitions, training scripts, utilities
+├── requirements.txt        # Python dependencies
 ```
 
 ## Installation & Dependencies
 
 
-Clone the repository:  
+Clone the repository:
 ```git clone https://github.com/masolele/WAC
 cd WAC
 ```

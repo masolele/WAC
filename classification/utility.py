@@ -6,21 +6,23 @@ Reusable utilities for:
   2. Interaction with the VITO STAC API to retrieve model IDs and metadata.
 """
 
-import ipyleaflet
-import ipywidgets as widgets
-from pyproj import CRS, Transformer
 import datetime
-import requests
-import xarray as xr
-import matplotlib.pyplot as plt
 from pathlib import Path
 
+import ipyleaflet
+import ipywidgets as widgets
+import matplotlib.pyplot as plt
+import requests
+import xarray as xr
+from pyproj import Transformer
 
 
 # -----------------------------------------------------------------------------
 # Interactive configuration setup
 # -----------------------------------------------------------------------------
-def interactive_configurator(max_size_km: int = 20, default_center=(50.0, 4.0), default_zoom=5):
+def interactive_configurator(
+    max_size_km: int = 20, default_center=(50.0, 4.0), default_zoom=5
+):
     """
     Creates an interactive map and year selector to select:
       - spatial_extent
@@ -45,7 +47,11 @@ def interactive_configurator(max_size_km: int = 20, default_center=(50.0, 4.0), 
     m = ipyleaflet.Map(center=default_center, zoom=default_zoom)
     draw_control = ipyleaflet.DrawControl(
         rectangle={"shapeOptions": {"color": "#0000FF"}},
-        polygon={}, circle={}, polyline={}, circlemarker={}, marker={}
+        polygon={},
+        circle={},
+        polyline={},
+        circlemarker={},
+        marker={},
     )
     m.add_control(draw_control)
 
@@ -57,7 +63,7 @@ def interactive_configurator(max_size_km: int = 20, default_center=(50.0, 4.0), 
         max=current_year,
         step=1,
         description="Year:",
-        continuous_update=False
+        continuous_update=False,
     )
 
     # Output panel
@@ -107,16 +113,18 @@ def interactive_configurator(max_size_km: int = 20, default_center=(50.0, 4.0), 
                 "south": south_m,
                 "east": east_m,
                 "north": north_m,
-                "crs": crs_code
+                "crs": crs_code,
             }
 
             temporal_extent = [start_date, end_date]
 
-            result.update({
-                "spatial_extent": spatial_extent,
-                "crs": crs_code,
-                "temporal_extent": temporal_extent
-            })
+            result.update(
+                {
+                    "spatial_extent": spatial_extent,
+                    "crs": crs_code,
+                    "temporal_extent": temporal_extent,
+                }
+            )
 
             print("Selection complete:")
             print(f"  CRS: {crs_code}")
@@ -126,12 +134,16 @@ def interactive_configurator(max_size_km: int = 20, default_center=(50.0, 4.0), 
 
     draw_control.on_draw(handle_draw)
 
-    ui = widgets.VBox([
-        widgets.HTML(f"<h3>🗺️ Draw a Bounding Box (max {max_size_km}×{max_size_km} km)</h3>"),
-        m,
-        year_picker,
-        info_out
-    ])
+    ui = widgets.VBox(
+        [
+            widgets.HTML(
+                f"<h3>🗺️ Draw a Bounding Box (max {max_size_km}×{max_size_km} km)</h3>"
+            ),
+            m,
+            year_picker,
+            info_out,
+        ]
+    )
 
     return ui, result
 
@@ -168,7 +180,7 @@ def get_model_id(spatial_extent, temporal_extent):
     query = {
         "collections": ["world-agri-commodities-models"],
         "bbox": bbox,
-        "datetime": datetime_range
+        "datetime": datetime_range,
     }
 
     url = "https://stac.openeo.vito.be/search"
@@ -194,14 +206,14 @@ def get_model_metadata(model_id):
     """Retrieve model metadata from STAC API."""
     url = f"https://stac.openeo.vito.be/collections/world-agri-commodities-models/items/{model_id}"
     response = requests.get(url)
-    
+
     if not response.ok:
         print("Error:", response.status_code, response.text)
         return None
-    
+
     item = response.json()
     props = item.get("properties", {})
-    
+
     metadata = {
         "ModelID": props.get("model_id"),
         "Name": props.get("title"),
@@ -215,7 +227,7 @@ def get_model_metadata(model_id):
         "Time of Data begins": props.get("start_datetime"),
         "Time of Data ends": props.get("end_datetime"),
     }
-    
+
     print("Model metadata retrieved.")
     return metadata
 

@@ -1,39 +1,43 @@
-import numpy as np
-import xarray as xr
-import logging
-import requests
 import functools
+import logging
 from typing import List
-from openeo.metadata import CollectionMetadata
 
+import numpy as np
+import requests
+import xarray as xr
+from openeo.metadata import CollectionMetadata
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+
 @functools.lru_cache(maxsize=1)
-def get_model_metadata_from_stac(model_id: str, stac_api_url: str = "https://stac.openeo.vito.be") -> dict:
+def get_model_metadata_from_stac(
+    model_id: str, stac_api_url: str = "https://stac.openeo.vito.be"
+) -> dict:
     """Fetch model metadata from STAC API"""
     try:
         # Get collection and item
         collection_id = "world-agri-commodities-models"
         url = f"{stac_api_url}/collections/{collection_id}/items/{model_id}"
-        
+
         response = requests.get(url)
         response.raise_for_status()
-        
+
         item = response.json()
-        properties = item.get('properties', {})
-        
+        properties = item.get("properties", {})
+
         logger.info(f"Retrieved model metadata for {model_id}")
         return {
-            'input_bands': properties.get('input_channels', []),
-            'input_shape': properties.get('input_shape', 0),
+            "input_bands": properties.get("input_channels", []),
+            "input_shape": properties.get("input_shape", 0),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to fetch model metadata: {e}")
         raise
+
 
 def get_normalization_specs(input_bands: List[str]) -> dict:
     """Dynamically generate normalization specs based on input bands"""
@@ -57,20 +61,21 @@ def get_normalization_specs(input_bands: List[str]) -> dict:
             "VH": (-30, -5),
             "DEM": (-400, 8000),
             "lon": (-180, 180),
-            "lat": (-60, 60)
+            "lat": (-60, 60),
         },
     }
-    
+
     # Filter specs to only include bands that are actually in the input
     filtered_specs = {"optical": {}, "linear": {}}
-    
+
     for band in input_bands:
         if band in specs["optical"]:
             filtered_specs["optical"][band] = specs["optical"][band]
         elif band in specs["linear"]:
             filtered_specs["linear"][band] = specs["linear"][band]
-    
+
     return filtered_specs
+
 
 def _normalize_optical(arr: np.ndarray, min_spec: float, max_spec: float) -> np.ndarray:
     """Log-based normalization for optical bands."""
@@ -79,15 +84,18 @@ def _normalize_optical(arr: np.ndarray, min_spec: float, max_spec: float) -> np.
     arr = np.exp(arr * 5 - 1)
     return arr / (arr + 1)
 
+
 def _normalize_linear(arr: np.ndarray, min_spec: float, max_spec: float) -> np.ndarray:
     """Linear min–max normalization for continuous variables."""
     arr = np.clip(arr, min_spec, max_spec)
     return (arr - min_spec) / (max_spec - min_spec)
 
+
 NORMALIZE_FUNCS = {
     "optical": _normalize_optical,
     "linear": _normalize_linear,
 }
+
 
 def validate_bands(cube: xr.DataArray, expected_bands: list):
     band_names = list(cube.coords["bands"].values)
@@ -101,45 +109,48 @@ def validate_bands(cube: xr.DataArray, expected_bands: list):
 
     # Check order
     if band_names != expected_bands:
-        logger.warning(f"Band order mismatch: reordering from {band_names} to {expected_bands}")
+        logger.warning(
+            f"Band order mismatch: reordering from {band_names} to {expected_bands}"
+        )
         cube = cube.sel(bands=expected_bands)
-    
+
     return cube
+
 
 def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     """
     Normalize bands based on model metadata from STAC API.
     """
     logger.info(f"Received data with shape: {cube.shape}, dims: {cube.dims}")
-    
+
     # Get model ID from context
     model_id = context.get("model_id")
     if not model_id:
         raise ValueError("model_id must be provided in context")
-    
+
     # Fetch model metadata from STAC
     model_metadata = get_model_metadata_from_stac(model_id)
-    expected_bands = model_metadata['input_bands']
-    
+    expected_bands = model_metadata["input_bands"]
+
     logger.info(f"Using model: {model_id} with expected bands: {expected_bands}")
     logger.info(f"Model expects {model_metadata['input_shape']} input bands")
-    
+
     # Validate and reorder bands
     cube = validate_bands(cube, expected_bands)
-    
+
     # Get normalization specs for this specific model
     normalization_specs = get_normalization_specs(expected_bands)
-    
+
     band_names = list(cube.coords["bands"].values)
     logger.info(f"Normalizing bands: {band_names}")
 
     img_values = cube.values
     normalized_bands = []
-    
+
     for band in band_names:
         arr = img_values[band_names.index(band)]
         pre_stats = (arr.min(), arr.max(), arr.mean())
-        
+
         # Find which group this band belongs to
         group = None
         for g, specs in normalization_specs.items():
@@ -177,16 +188,11 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
 
 
 def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
-
     model_id = context.get("model_id")
-  
+
     # Fetch model metadata from STAC
     model_metadata = get_model_metadata_from_stac(model_id)
-    input_bands = model_metadata.get('input_bands', []) 
+    input_bands = model_metadata.get("input_bands", [])
 
     logger.info(f"Applying metadata with input bands: {input_bands}")
-    return metadata.rename_labels(
-        dimension = "bands",
-        target = input_bands
-    )
-
+    return metadata.rename_labels(dimension="bands", target=input_bands)
