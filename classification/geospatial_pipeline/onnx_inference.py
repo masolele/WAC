@@ -1,15 +1,14 @@
 from pathlib import Path
+
 from openeo import UDF, DataCube
 
 # Path to inference UDF
-UDF_DIR = Path(__file__).parent.parent.resolve() / 'UDF'
+UDF_DIR = Path(__file__).parent.parent.resolve() / "UDF"
 
-#TODO automate patch_size
+
+# TODO automate patch_size
 def run_inference(
-    input_cube: DataCube,
-    model_id: str,
-    patch_size: int = 64,
-    overlap: int = 0
+    input_cube: DataCube, model_id: str, patch_size: int = 64, overlap: int = 0
 ) -> DataCube:
     """
     Run model inference over an input data cube.
@@ -27,21 +26,19 @@ def run_inference(
         DataCube: Output data cube after inference.
     """
 
-    context = {
-        'model_id': model_id
-    }
+    context = {"model_id": model_id}
 
-    udf_inference = UDF.from_file(UDF_DIR / 'udf_inference.py', context=context)
+    udf_inference = UDF.from_file(UDF_DIR / "udf_inference.py", context=context)
 
-    output =  input_cube.apply_neighborhood(
+    output = input_cube.apply_neighborhood(
         process=udf_inference,
         size=[
-            {'dimension': 'x', 'value': patch_size, 'unit': 'px'},
-            {'dimension': 'y', 'value': patch_size, 'unit': 'px'},
+            {"dimension": "x", "value": patch_size, "unit": "px"},
+            {"dimension": "y", "value": patch_size, "unit": "px"},
         ],
         overlap=[
-            {'dimension': 'x', 'value': overlap, 'unit': 'px'},
-            {'dimension': 'y', 'value': overlap, 'unit': 'px'},
-        ]
+            {"dimension": "x", "value": overlap, "unit": "px"},
+            {"dimension": "y", "value": overlap, "unit": "px"},
+        ],
     )
     return output

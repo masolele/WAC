@@ -1,6 +1,6 @@
 # Classification Module — WAC
 
-This folder contains the code, notebooks, and configuration for running the **classification / mapping** step of the WAC pipeline.  
+This folder contains the code, notebooks, and configuration for running the **classification / mapping** step of the WAC pipeline.
 Users must first edit the **`config.py`** to match their region, temporal extent, and model settings before running the workflows.
 
 ---
@@ -25,19 +25,18 @@ After configuring `config.py`, you can run the full classification pipeline usin
 
 ### Steps:
 
-1. **Open the notebook**  
-   Use Jupyter / JupyterLab / VSCode to open `full_processing_pipeline.ipynb` (or similar).  
+1. **Open the notebook**
+   Use Jupyter / JupyterLab / VSCode to open `full_processing_pipeline.ipynb` (or similar).
    Make sure the working directory is set properly (so relative paths resolve).
 
-2. **Run all cells in order**  
+2. **Run all cells in order**
    The notebook is intended to run steps such as:
-   - Preprocessing / data loading  
-   - Classification inference  
-   - Output stitching & export  
-   - (Optional) Visualization or basic validation  
+   - Preprocessing / data loading
+   - Classification inference
+   - Output stitching & export
+   - (Optional) Visualization or basic validation
 
 
 ### Prerequisites
-- Python 3.x   
+- Python 3.x
 - Dependencies: openEO
-

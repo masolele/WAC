@@ -21,7 +21,7 @@ The model expects a single input tensor with the following specifications:
   - Batch size: 1 (fixed)
   - Height: 64 pixels
   - Width: 64 pixels
-  - Channels: 15 (combined features - Latin America, Southeast Asia), and 17 (combined features - Africa) 
+  - Channels: 15 (combined features - Latin America, Southeast Asia), and 17 (combined features - Africa)
 - **Data Type**: float32 (elem_type: 1)
 
 ### Input Channel Organization
@@ -62,7 +62,7 @@ The model predict's probability of multiple crop type. Each pixel in the output 
 
 Example format for each pixel:
 ```python
-# Africa model output has 25 classes 
+# Africa model output has 25 classes
 classes = [
 
 0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
@@ -241,5 +241,5 @@ This architecture is tailored for:
 
 The `Attention_UNet_Fusion` model combines three U-Nets
 network to process a 17-channel, 64x64 input. Channels 0–11, 12–13 and 14 - 16
-re handled by U-Nets for feature extraction, while channels 12–14 guide 
+re handled by U-Nets for feature extraction, while channels 12–14 guide
 attention via a dense network. The fused output becomes a 64x64 segmentation map with 1 class, making it a tool for binary image segmentation tasks.
