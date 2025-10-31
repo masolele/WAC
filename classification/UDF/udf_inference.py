@@ -7,7 +7,7 @@ import xarray as xr
 import numpy as np
 import hashlib
 import threading
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple
 import logging
 from openeo.metadata import CollectionMetadata
 
@@ -169,7 +169,7 @@ def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMet
     )
 
 
-def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, Any], np.ndarray]:
+def preprocess_image(cube: xr.DataArray) -> Tuple[np.ndarray, Dict[str, xr.DataArray], np.ndarray]:
     """
     Prepare the input cube for inference:
       - Transpose to (y, x, bands)
@@ -211,7 +211,7 @@ def run_inference(
 #TODO
 def postprocess_output(
     pred: np.ndarray,  # Shape: [y, x, bands]
-    coords: Dict[str, Any],
+    coords: Dict[str, xr.DataArray],
     mask_invalid: np.ndarray  # Shape: [y, x, bands]
 ) -> xr.DataArray:
     """
