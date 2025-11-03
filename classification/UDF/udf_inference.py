@@ -6,7 +6,7 @@ import sys
 import tempfile
 import threading
 from typing import Dict, Tuple
-
+import logging
 import numpy as np
 import requests
 import xarray as xr
@@ -184,7 +184,7 @@ def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMet
 
 def preprocess_image(
     cube: xr.DataArray,
-) -> Tuple[np.ndarray, Dict[str, xr.Coordinate], np.ndarray]:
+) -> Tuple[np.ndarray, Dict[str, xr.DataArray], np.ndarray]:
     """
     Prepare the input cube for inference:
       - Transpose to (y, x, bands)
@@ -192,6 +192,9 @@ def preprocess_image(
       - Return batch tensor, coords, and invalid-value mask
     """
     # Reorder dims
+    if 't' in cube.dims:
+        cube = cube.squeeze('t', drop=True)
+
     reordered = cube.transpose("y", "x", "bands")
     values = reordered.values.astype(np.float32)
 
@@ -206,7 +209,7 @@ def preprocess_image(
     # Add batch dimension
     input_tensor = sanitized[None, ...]
     logger.info(f"Preprocessed tensor shape={input_tensor.shape}")
-    return input_tensor, reordered.coords, mask_invalid
+    return input_tensor, dict(reordered.coords), mask_invalid
 
 
 def run_inference(
@@ -222,7 +225,7 @@ def run_inference(
 # TODO
 def postprocess_output(
     pred: np.ndarray,  # Shape: [y, x, bands]
-    coords: Dict[str, xr.Coordinate],
+    coords: Dict[str, xr.DataArray],
     mask_invalid: np.ndarray,  # Shape: [y, x, bands]
 ) -> xr.DataArray:
     """
@@ -285,6 +288,7 @@ def apply_model(cube: xr.DataArray, model_id: str) -> xr.DataArray:
     return postprocess_output(raw_pred, coords, mask_invalid)
 
 
+
 def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
     """
     Apply ONNX model per timestep in the datacube.
@@ -295,11 +299,21 @@ def apply_datacube(cube: xr.DataArray, context: dict) -> xr.DataArray:
 
     logger.info(f"Applying model from STAC: {model_id}")
 
-    cube = cube.transpose("y", "x", "bands", "t")
+    # Ensure correct dimension order
+    cube = cube.transpose('y', 'x', 'bands', 't')
 
     if "t" in cube.dims:
         logger.info("Applying model per timestep via groupby-map.")
-        return cube.groupby("t").map(lambda da: apply_model(da, model_id))
+        # Use isel to handle time dimension properly
+        def process_timestep(da):
+            return apply_model(da, model_id)
+            
+        return cube.groupby('t').map(process_timestep)
     else:
         logger.info("Single timestep: applying model once.")
         return apply_model(cube, model_id)
+
+
+
+
+

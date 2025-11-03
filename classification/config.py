@@ -1,22 +1,22 @@
-TEMPORAL_EXTENT = ["2023-01-01", "2024-01-01"]
+TEMPORAL_EXTENT = ['2020-01-01', '2021-01-01'] 
 
-# coffee
-CRS = "EPSG:32750"
+#coffee
+CRS = "EPSG:32629" 
 RESOLUTION = 10  # important; the resolution is implicitely tied to the CRS; so we need to use UTM based CRS here
 
 SPATIAL_EXTENT = {
-    "west": 818051,
-    "south": 9495261,
-    "east": 836471,
-    "north": 9515181,
-    "crs": CRS,
+    'west': 677736,
+    'south': 624010,
+    'east': 694576,
+    'north': 638629,
+    'crs': CRS,
 }
 
 MAX_CLOUD_COVER = 75
-QUANTILE = 0.9
+QUANTILE = 0.85
 
 PATCH_SIZE = 128
-OVERLAP_SIZE = 32
+OVERLAP_SIZE = 16
 
 
 JOB_OPTIONS = {
@@ -28,6 +28,7 @@ JOB_OPTIONS = {
     "max-executors": 10,
     "image-name": "python38",
     "udf-dependency-archives": [
-        "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_dependencies_1.16.3.zip#onnx_deps",
-    ],
-}
+        "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_deps_python311.zip#onnx_deps",
+        ]
+ }
+
