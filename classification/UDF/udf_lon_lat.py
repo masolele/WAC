@@ -1,18 +1,21 @@
+import logging
+
 import numpy as np
 import xarray as xr
-import logging
-from pyproj import Transformer
 from openeo.udf import XarrayDataCube
+from pyproj import Transformer
+
 
 # Setup logging
 def _setup_logging() -> logging.Logger:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     return logging.getLogger(__name__)
 
+
 from openeo.udf.udf_data import UdfData
 
-
 logger = _setup_logging()
+
 
 def apply_udf_data(udf_data: UdfData) -> UdfData:
     """This is the actual openeo UDF that will be executed by the backend."""
@@ -36,15 +39,10 @@ def apply_udf_data(udf_data: UdfData) -> UdfData:
     combined = xr.DataArray(
         data=np.stack([lon_grid, lat_grid], axis=0),  # shape: (2, y, x)
         dims=("bands", "y", "x"),
-        coords={
-            "bands": ["lon", "lat"],
-            "x": arr.coords["x"],
-            "y": arr.coords["y"]
-        }
+        coords={"bands": ["lon", "lat"], "x": arr.coords["x"], "y": arr.coords["y"]},
     )
 
-    cube_output = XarrayDataCube(combined)    
+    cube_output = XarrayDataCube(combined)
     udf_data.datacube_list = [cube_output]
 
     return udf_data
-

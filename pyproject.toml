@@ -1,0 +1,38 @@
+[project]
+name = "wac"
+version = "0.1.0"
+description = "World AgroCommodities"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "netcdf4==1.7.3",
+    "openeo>=0.45.0",
+    "pyproj==3.7.2",
+    "rasterio==1.4.3",
+    "requests==2.32.5",
+    "xarray==2025.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "ruff>=0.14.2",
+]
+notebook = [
+    "matplotlib==3.10.7",
+    "ipyleaflet==0.20.0",
+    "ipywidgets==8.1.7",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E"]
+ignore = [
+  "E501",  # Ignore "line-too-long" issues, let black handle that.
+  "E402",  # Ignore "module level import not at top of file" issues.
+]
+
+[tool.ruff.format]
+indent-style = "space"

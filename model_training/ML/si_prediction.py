@@ -1,14 +1,15 @@
 import os
-from keras.models import load_model
-import numpy as np
-from skimage import io
-# keep below line in script at ALL times
-from Unet_RES_Att_models_IV import Attention_UNetFusion3I_Sentinel2_Binary
+
 import matplotlib.pyplot as plt
+import numpy as np
+from keras.models import load_model
+from skimage import io
+
+# keep below line in script at ALL times
 
 # Set environment variable to allow multiple OpenMP libraries to be loaded
 # This is necessary to prevent conflicts with OpenMP runtime libraries
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
 
 
 def normalise_vv(raster):
@@ -78,17 +79,19 @@ def norm(image):
     Applies logarithmic transformation, scaling, and sigmoid transfer to the image data.
 
     """
-    NORM_PERCENTILES = np.array([
-        [1.7417268007636313, 2.023298706048351],
-        [1.7261204997060209, 2.038905204308012],
-        [1.6798346251414997, 2.179592821212937],
-        [2.3828939530384052, 2.7578332604178284],
-        [1.7417268007636313, 2.023298706048351],
-        [1.7417268007636313, 2.023298706048351],
-        [1.7417268007636313, 2.023298706048351],
-        [1.7417268007636313, 2.023298706048351],
-        [1.7417268007636313, 2.023298706048351]
-    ])
+    NORM_PERCENTILES = np.array(
+        [
+            [1.7417268007636313, 2.023298706048351],
+            [1.7261204997060209, 2.038905204308012],
+            [1.6798346251414997, 2.179592821212937],
+            [2.3828939530384052, 2.7578332604178284],
+            [1.7417268007636313, 2.023298706048351],
+            [1.7417268007636313, 2.023298706048351],
+            [1.7417268007636313, 2.023298706048351],
+            [1.7417268007636313, 2.023298706048351],
+            [1.7417268007636313, 2.023298706048351],
+        ]
+    )
 
     # Apply logarithmic transformation and normalization to the image
     image = np.log(image * 0.005 + 1)
@@ -148,8 +151,8 @@ red_edge1 = x_img1[:, :, 3]
 red = x_img1[:, :, 2]
 green = x_img1[:, :, 1]
 blue = x_img1[:, :, 0]
-ndvi = np.where((nir + red) == 0., 0, (nir - red) / (nir + red))
-ndwi = np.where((green + nir) == 0., 0, (green - nir) / (green + nir))
+ndvi = np.where((nir + red) == 0.0, 0, (nir - red) / (nir + red))
+ndwi = np.where((green + nir) == 0.0, 0, (green - nir) / (green + nir))
 
 # Reshape and normalize indices
 ndvi = np.reshape(ndvi, (SIZE_X, SIZE_Y, 1))
@@ -175,6 +178,7 @@ predictions_smooth = model.predict(image)
 # Get the final predicted classes by taking the argmax of the predictions
 final_prediction = np.argmax(predictions_smooth, axis=-1)
 
+
 def show_prediction(final_prediction):
     """
     Visualize the final classified image.
@@ -188,15 +192,18 @@ def show_prediction(final_prediction):
     if final_prediction.ndim == 3 and final_prediction.shape[0] == 1:
         final_prediction = final_prediction.squeeze(axis=0)
     elif final_prediction.ndim == 1:
-        final_prediction = final_prediction.reshape((int(np.sqrt(final_prediction.size)), -1))
+        final_prediction = final_prediction.reshape(
+            (int(np.sqrt(final_prediction.size)), -1)
+        )
 
     # Visualize the final predicted image
-    plt.imshow(final_prediction, cmap='viridis')
+    plt.imshow(final_prediction, cmap="viridis")
     plt.colorbar()
     plt.title(f"{model_path} prediction")
     plt.show()
 
+
 show_prediction(final_prediction)
 
 # Save the final predicted image
-io.imsave(r'prediction.tif', final_prediction.astype(np.uint8))
+io.imsave(r"prediction.tif", final_prediction.astype(np.uint8))
