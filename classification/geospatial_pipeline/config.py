@@ -27,7 +27,6 @@ JOB_OPTIONS = {
     "python-memory": "3000m",
     "max-executors": 10,
     "allow_empty_cubes": True,
-    # "image-name": "python38",
     "udf-dependency-archives": [
         "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_deps_python311.zip#onnx_deps",
     ],

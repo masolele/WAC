@@ -10,12 +10,10 @@ def add_tree_cover_density(
     connection: openeo.Connection,
     cube: openeo.DataCube,
     spatial_extent: Dict[str, Union[float, str]],
-    # temporal_extent: List[str],
 ) -> openeo.DataCube:
     tree_cover_density = connection.load_stac(
         url="https://www.stac.lcfm.dataspace.copernicus.eu/collections/LCFM_TCD-10_CDSE_v100",
         spatial_extent=spatial_extent,
-        # temporal_extent=temporal_extent,
         bands=["MAP"],
     ).min_time()  # Reduce time dimension since there is only one time step
 
