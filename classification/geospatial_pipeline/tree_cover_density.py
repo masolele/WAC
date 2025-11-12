@@ -10,7 +10,9 @@ def add_tree_cover_density(
     connection: openeo.Connection,
     cube: openeo.DataCube,
     spatial_extent: Dict[str, Union[float, str]],
+    crs: str,
 ) -> openeo.DataCube:
+    spatial_extent = {**spatial_extent, "crs": crs}  # add crs coordinate
     tree_cover_density = connection.load_stac(
         url="https://www.stac.lcfm.dataspace.copernicus.eu/collections/LCFM_TCD-10_CDSE_v100",
         spatial_extent=spatial_extent,

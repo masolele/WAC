@@ -293,8 +293,6 @@ def plot_job_results(
             im = data.plot(
                 ax=ax,
                 cmap="viridis",
-                vmin=0,
-                vmax=1,
                 add_colorbar=True,
                 add_labels=False,
             )
@@ -302,14 +300,18 @@ def plot_job_results(
             ax.axis("off")
 
     elif mode == "output":
-        classification_var = variables_to_plot[-1]
-        class_ids = list(range(len(variables_to_plot) - 1))
+        classification_var = "ARGMAX"
+        tree_cover_var = "Tree_cover_density_2020"
 
         for i, var in enumerate(variables_to_plot):
+            if var not in ds:
+                continue
+
             data = ds[var].isel(t=time_step)
             ax = axes[i]
 
             if var == classification_var:
+                # Discrete classification map
                 im = data.plot(
                     ax=ax,
                     cmap="tab20",
@@ -317,9 +319,21 @@ def plot_job_results(
                     add_labels=False,
                 )
                 cbar = im.colorbar
-                cbar.set_ticks(class_ids)
-                cbar.set_ticklabels(class_ids)
+                cbar.set_label("Class ID")
+            elif var == tree_cover_var:
+                # Continuous 0–100 map
+                im = data.plot(
+                    ax=ax,
+                    cmap="YlGn",
+                    vmin=0,
+                    vmax=100,
+                    add_colorbar=True,
+                    add_labels=False,
+                )
+                cbar = im.colorbar
+                cbar.set_label("Tree Cover Density (%)")
             else:
+                # Probability or continuous confidence-like layers (0–1)
                 im = data.plot(
                     ax=ax,
                     cmap="viridis",
@@ -332,6 +346,7 @@ def plot_job_results(
             ax.set_title(var)
             ax.axis("off")
 
+    # Hide unused subplots
     for j in range(i + 1, len(axes)):
         axes[j].axis("off")
 
