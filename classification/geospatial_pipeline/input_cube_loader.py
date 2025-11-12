@@ -7,7 +7,7 @@ from openeo import UDF, Connection, DataCube
 from openeo.processes import array_element, date_shift, quantiles
 
 # Determine script directory
-BASE_DIR = Path().parent.resolve()
+BASE_DIR = Path(__file__).parent.parent.resolve()
 UDF_DIR = BASE_DIR / "UDF"
 
 
