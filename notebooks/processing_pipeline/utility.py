@@ -159,8 +159,13 @@ def interactive_configurator(
 
             # Get UTM CRS
             center_lon = (west + east) / 2
+            center_lat = (south + north) / 2
+
             utm_zone = int((center_lon + 180) / 6) + 1
-            crs_code = f"EPSG:{32600 + utm_zone}"
+            if center_lat >= 0:
+                crs_code = f"EPSG:{32600 + utm_zone}"  # Northern hemisphere
+            else:
+                crs_code = f"EPSG:{32700 + utm_zone}"  # Southern hemisphere
 
             # Transform to UTM
             transformer = Transformer.from_crs("EPSG:4326", crs_code, always_xy=True)
