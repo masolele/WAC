@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from typing import Callable
 
-import config as config
-from geospatial_pipeline.band_normalization import normalize_cube
-from geospatial_pipeline.input_cube_loader import load_input_cube
-from geospatial_pipeline.onnx_inference import run_inference
+import world_agrocommodities.classification.geospatial_pipeline.config as config
+from world_agrocommodities.classification.geospatial_pipeline.band_normalization import normalize_cube
+from world_agrocommodities.classification.geospatial_pipeline.input_cube_loader import load_input_cube
+from world_agrocommodities.classification.geospatial_pipeline.onnx_inference import run_inference
 from openeo import Connection, DataCube
 from openeo.api.process import Parameter
 from openeo.rest.udp import build_process_dict

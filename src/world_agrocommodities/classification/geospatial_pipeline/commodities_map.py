@@ -2,17 +2,17 @@
 Module that combines the entire processing pipeline for geospatial data classification using OpenEO.
 """
 
-import config as config
+import world_agrocommodities.classification.geospatial_pipeline.config as config
 import openeo
 
 from openeo.api.process import Parameter
 
 from typing import Dict, Union, List
 
-from tree_cover_density import add_tree_cover_density
-from band_normalization import normalize_cube
-from input_cube_loader import load_input_cube
-from onnx_inference import run_inference
+from world_agrocommodities.classification.geospatial_pipeline.tree_cover_density import add_tree_cover_density
+from world_agrocommodities.classification.geospatial_pipeline.band_normalization import normalize_cube
+from world_agrocommodities.classification.geospatial_pipeline.input_cube_loader import load_input_cube
+from world_agrocommodities.classification.geospatial_pipeline.onnx_inference import run_inference
 
 
 def map_commodities(
