@@ -1,0 +1,245 @@
+# ComCrop Model Documentation
+
+This document describes the ONNX version of the ComCrop model, which is converted from the original TensorFlow model used for crop monitoring using OpenEO and deep learning.
+
+## Model Overview
+
+The model is an Attention U-Net with fusion mechanisms, specifically designed for crop monitoring using multi-source satellite data (Sentinel-1 and Sentinel-2) along with geographical information.
+
+### Model Architecture
+
+- **Base Architecture**: Attention U-Net with multi-input fusion
+- **Original Framework**: TensorFlow 2.10.0
+- **ONNX Version**: IR version 7, Opset version 13
+
+## Input Specifications
+
+The model expects a single input tensor with the following specifications:
+
+- **Input Name**: "input"
+- **Shape**: `[1, 64, 64, 15] for Latin America, Southeast Asia, and [1, 64, 64, 17] for Africa`
+  - Batch size: 1 (fixed)
+  - Height: 64 pixels
+  - Width: 64 pixels
+  - Channels: 15 (combined features - Latin America, Southeast Asia), and 17 (combined features - Africa)
+- **Data Type**: float32 (elem_type: 1)
+
+### Input Channel Organization
+The input channels are organized as follows:
+
+1. **Sentinel-2 Bands** (Channels 0-8):
+   - Blue, Green, Red
+   - Red Edge 1, 2, 3
+   - NIR
+   - SWIR 1, 2
+   - *Note: These bands are normalized using log-transformation and percentile-based scaling*
+
+2. **Radar Data** (Channels 9-10):
+   - VV polarization (normalized to [-25, 0] range)
+   - VH polarization (normalized to [-30, -5] range)
+
+3. **Geographical Information** (Channels 11-13):
+   - Altitude (normalized to [-400, 8000] range)
+   - Longitude (normalized to [-180, 180] range)
+   - Latitude (normalized to [-60, 60] range)
+
+4. **Additional Features**:
+   - Derived indices Latin America, Southeast Asia (NDVI)
+   - Derived indices Africa (NDVI, NDRE, EVI)
+
+## Output Specifications
+
+- **Output Name**: "activation_65"
+- **Shape**: `[1, 64, 64, 22]`
+  - Batch size: 1 (fixed)
+  - Height: 64 pixels
+  - Width: 64 pixels
+  - Classes: 25 for Africa, 24 for Southeast Asia, 22 Latin America (probability distribution over crop type)
+- **Data Type**: float32 (elem_type: 1)
+
+### Crop Classes
+The model predict's probability of multiple crop type. Each pixel in the output contains a probability distribution over each class.
+
+Example format for each pixel:
+```python
+# Africa model output has 25 classes
+classes = [
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea, 24: Others
+]
+
+# Southeast Asia model output has 24 classes
+classes = [
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging, 22: Cashew, 23: Tea
+]
+
+
+# Latin America model output has only 22 classes
+classes = [
+
+0: Background, 1: Other large-scale cropland, 2: Pasture, 3: Mining, 4: Other small-scale cropland, 5: Roads, 6: Forest,
+7: Plantation forest, 8: Coffee, 9: Build-up, 10: Water, 11: Oil palm, 12: Rubber, 13: cacao, 14: Avocado,
+15: Soy, 16: Sugar, 17: Maize, 18: Banana, 19: Pineapple, 20: Rice, 21: Wood/logging
+]
+
+To get the probability of a class, you need to set the class value as output, e.g. for class cocoa (class 13), you would set the prediction output as
+model.predict(input_image)[:,:,13], or for coffee (class 8) model.predict(input_image)[:,:,8]
+```
+
+## Model Conversion Details
+
+The model was converted from TensorFlow to ONNX using `tf2onnx` with the following specifications:
+- Original model: TensorFlow SavedModel/HDF5 format
+- Target ONNX opset: 13
+- Conversion tool: tf2onnx version 1.16.1
+
+### Conversion Validation
+- Maximum numerical difference between TensorFlow and ONNX outputs: 5.66e-06
+- Validation performed using random input data
+- All operations successfully mapped to ONNX operators
+
+
+## Usage Example
+
+```python
+import onnxruntime as ort
+import numpy as np
+
+# Load the ONNX model
+session = ort.InferenceSession("comcrop_udf_test.onnx")
+
+# Prepare input data (example)
+input_data = np.random.rand(1, 64, 64, 17).astype(np.float32)
+
+# Run inference
+input_name = session.get_inputs()[0].name
+output_name = session.get_outputs()[0].name
+predictions = session.run([output_name], {input_name: input_data})[0]
+
+# Get predicted class
+predicted_classes = np.argmax(predictions, axis=-1)
+```
+
+## Model Performance Notes
+
+1. The model preserves the attention mechanisms from the original TensorFlow implementation
+2. Includes upsampling operations with deprecated 'tf_half_pixel_for_nn' attribute (opset 13 warning)
+3. Maintains the multi-scale feature fusion capabilities of the original model
+
+## Deployment Considerations
+
+1. The model requires normalized input data according to the specified ranges for each channel
+2. Memory requirements: Approximately 150MB for model weights
+3. Compatible with any ONNX Runtime supported platform
+4. Recommended to use ONNX Runtime version 1.20.0 or higher
+
+
+---
+
+## ONNX Model Description
+
+ONNX Model Description generated by [`onnx.helper.printable_graph(onnx_model.graph)`];
+
+The model processes the 15 input channels by splitting them into three groups, each handled by a distinct pathway:
+
+1. **Channels 0–11 (12 channels):** Processed by a U-Net-like structure for feature extraction and segmentation.
+2. **Channels 12–13 (2 channels):** Handled by a second U-Net-like structure, mirroring the first.
+3. **Channels 14–16 (3 channels):** Fed into a dense (fully connected) network to generate features, likely used as attention maps to guide the U-Nets.
+
+These pathways are fused together, with attention mechanisms emphasizing key regions, to produce a final segmentation map. This design is ideal for tasks where input channels represent diverse information, such as medical imaging or satellite imagery.
+
+---
+
+## Components
+
+The model relies on several standard deep learning components for image processing:
+
+- **Convolutional Layers:** Extract spatial features using filters (e.g., 3x3 kernels), typically followed by batch normalization and ReLU activation for stability and efficiency.
+- **Max Pooling:** Reduces feature map sizes (e.g., 64x64 to 32x32) during the encoder phase, capturing essential patterns while lowering computational load.
+- **Transpose Convolutions:** Upsample feature maps in the decoder phase, restoring resolution (e.g., 16x16 to 32x32).
+- **Attention Mechanisms:** Weight features based on attention maps from the dense network, focusing on critical areas.
+- **Concatenation:** Merges features from different network parts, such as skip connections in U-Nets or the final fusion step.
+- **Sigmoid:** Outputs class probabilities for the final segmentation map.
+
+---
+
+## Detailed Structure
+
+Here’s a step-by-step walkthrough of how the model processes the input.
+
+### 1. Input Splitting
+The input tensor `[1, 64, 64, 17]` is divided along the channel dimension into 15 tensors of shape `[1, 64, 64, 1]`, then grouped as:
+- **Channels 0–11:** Concatenated into `[1, 64, 64, 12]`.
+- **Channels 12–13:** Concatenated into `[1, 64, 64, 2]`.
+- **Channels 14–16:** Concatenated into `[1, 64, 64, 3]`.
+
+Each group follows a unique processing path.
+
+### 2. Dense Network (Channels 14–16)
+- **Input:** `[1, 64, 64, 3]`, transposed to `[1, 3, 64, 64]`.
+- **Structure:** Mirrors the U-Net for channels 10–11:
+  - Encoder: Downsamples to `[1, 512, 8, 8]` through levels with 64, 128, 256, and 512 filters.
+  - Decoder: Upsamples back to `[1, 64, 64, 64]` with attention and skip connections.
+- **Output:** `[1, 64, 64, 64]` feature map.
+- **Purpose:** Provides an attention signal or context for the U-Nets.
+
+### 3. U-Net for Channels 12–13
+- **Input:** `[1, 64, 64, 2]`, transposed to `[1, 2, 64, 64]`.
+- **Encoder (Downsampling):**
+  - **Level 1:** Two 3x3 conv layers (64 filters), output `[1, 64, 64, 64]`, then max pooling to `[1, 64, 32, 32]`.
+  - **Level 2:** Two 3x3 conv layers (128 filters), output `[1, 128, 32, 32]`, then max pooling to `[1, 128, 16, 16]`.
+  - **Level 3:** Two 3x3 conv layers (256 filters), output `[1, 256, 16, 16]`, then max pooling to `[1, 256, 8, 8]`.
+  - **Bottom:** Two 3x3 conv layers (512 filters), output `[1, 512, 8, 8]`.
+- **Decoder (Upsampling with Attention):**
+  - **Level 3:** Upsampled to `[1, 256, 16, 16]`, combined with encoder features via skip connection and attention, processed with conv layers.
+  - **Level 2:** Upsampled to `[1, 128, 32, 32]`, attention applied, concatenated, and conv layers.
+  - **Level 1:** Upsampled to `[1, 64, 64, 64]`, attention applied, concatenated, and conv layers.
+- **Output:** `[1, 64, 64, 64]` feature map.
+
+### 4. U-Net for Channels 0–11
+- **Input:** `[1, 64, 64, 10]`, transposed to `[1, 10, 64, 64]`.
+- **Structure:** Mirrors the U-Net for channels 10–11:
+  - Encoder: Downsamples to `[1, 512, 8, 8]` through levels with 64, 128, 256, and 512 filters.
+  - Decoder: Upsamples back to `[1, 64, 64, 64]` with attention and skip connections.
+- **Output:** `[1, 64, 64, 64]` feature map.
+
+### 5. Fusion and Output
+- **Concatenation:** Outputs from both U-Nets and the dense network (resized to `[1, 256, 64, 64]`) are combined into `[1, 384, 64, 64]` (64 + 64 + 256 = 384, though channel counts may vary).
+- **Final Convolution:** A 1x1 conv layer with 22 filters produces `[1, 22, 64, 64]`.
+- **Softmax:** Generates class probabilities.
+- **Output:** Transposed to `[1, 64, 64, 1]`, a segmentation map with 1 class per pixel.
+
+---
+
+## Workflow Summary
+
+1. **Splitting:** The 15-channel input is divided into three parts for specialized processing.
+2. **Feature Extraction:**
+   - U-Nets extract hierarchical features from channels 0–11 and 12–13 using encoder-decoder paths with skip connections.
+   - The dense network processes channels 12–14 into a guiding feature map.
+3. **Attention:** The dense network’s output weights U-Net features during upsampling, highlighting key areas.
+4. **Fusion:** All features are combined to integrate multi-channel information.
+5. **Segmentation:** A final layer classifies each pixel into one 1 class.
+
+---
+
+## Design Philosophy
+
+This architecture is tailored for:
+- **Multi-Channel Inputs:** Handles diverse data types across 15 channels.
+- **Attention-Driven Focus:** Improves accuracy by emphasizing important regions.
+- **Detailed Segmentation:** Preserves spatial details via U-Net skip connections, perfect for tasks like medical or land-use segmentation.
+
+---
+
+## Summary
+
+The `Attention_UNet_Fusion` model combines three U-Nets
+network to process a 17-channel, 64x64 input. Channels 0–11, 12–13 and 14 - 16
+re handled by U-Nets for feature extraction, while channels 12–14 guide
+attention via a dense network. The fused output becomes a 64x64 segmentation map with 1 class, making it a tool for binary image segmentation tasks.
