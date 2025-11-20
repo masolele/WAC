@@ -3,7 +3,7 @@ from pathlib import Path
 from openeo import UDF, DataCube
 
 # Path to inference UDF
-UDF_DIR = Path(__file__).parent.parent.resolve() / "UDF"
+UDF_DIR = Path(__file__).parent.resolve() / "UDF"
 
 
 # TODO automate patch_size
