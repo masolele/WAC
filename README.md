@@ -9,18 +9,6 @@ This repository contains code, models, and utilities developed under the **World
 - Provide scalable, open, reproducible methods for EU Member States by making use of **openEO** and **CDSE**
 - Validate algorithms and support national uptake
 
-## Repository Structure
-
-Below is an example structure. You should adjust to match what you currently have. If you are interesting in testing out the commodity mapping; *classification* is the entry point
-
-```
-WAC/
-├── classification/         # Scripts for performing commodity classification tasks
-├── in_situ/                # [experimental] scripts for onboarding in-situ training data
-├── model_training/         # scripts detailing the model architecture definitions, training scripts, utilities
-├── requirements.txt        # Python dependencies
-```
-
 ## Installation & Dependencies
 
 
@@ -37,6 +25,29 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-Install Python dependencies:
+#### Users
+From inside their virtual environments, users can install the package as follows:
 
-Ensure **openEO** is installed
+```
+pip install .
+```
+
+If users want to install additional dependencies (e.g. for notebooks or for model training), they can run
+
+```
+pip install .[notebooks, model_training]
+```
+
+#### Developers
+
+The `world_agrocommodities` repository uses `uv` as package manager (https://github.com/astral-sh/uv). From the `uv.lock` file, developers can install all necessary dependencies (including the optional groups), by running
+
+```
+uv sync
+```
+
+Afterwards, developers can install `world_agrocommodities` in editable mode and install the git hooks
+
+```
+uv pip install -e . && uv run pre-commit install
+```
