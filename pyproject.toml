@@ -32,11 +32,12 @@ dependencies = [
     "xarray==2025.1.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.14.2",
 ]
+
 notebooks = [
     "matplotlib==3.10.7",
     "ipyleaflet==0.20.0",
