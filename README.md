@@ -32,10 +32,10 @@ From inside their virtual environments, users can install the package as follows
 pip install .
 ```
 
-If users want to install additional dependencies (e.g. for notebooks or for model training), they can run
+To be able to run the notebooks, the optional `notebooks` dependency has to be installed as well:
 
 ```
-pip install .[notebooks, model_training]
+pip install .[notebooks]
 ```
 
 #### Developers
@@ -43,11 +43,22 @@ pip install .[notebooks, model_training]
 The `world_agrocommodities` repository uses `uv` as package manager (https://github.com/astral-sh/uv). From the `uv.lock` file, developers can install all necessary dependencies (including the optional groups), by running
 
 ```
-uv sync
+uv sync --all-extras
 ```
 
+This will automatically create a venv used by `uv`, you can activate the venv from the root of the repository:
+
+```
+source .venv/bin/activate
+```
 Afterwards, developers can install `world_agrocommodities` in editable mode and install the git hooks
 
 ```
 uv pip install -e . && uv run pre-commit install
+```
+
+Developers who want to avoid `uv` alltogether, can install the package and all optional dependencies in their favourite environment using `pip`
+
+```
+pip install -e .[dev,notebooks]
 ```
