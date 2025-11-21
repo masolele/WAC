@@ -13,7 +13,8 @@ This repository contains code, models, and utilities developed under the **World
 
 
 Clone the repository:
-```git clone https://github.com/masolele/WAC
+```
+git clone https://github.com/masolele/WAC
 cd WAC
 ```
 
