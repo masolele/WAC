@@ -9,23 +9,12 @@ This repository contains code, models, and utilities developed under the **World
 - Provide scalable, open, reproducible methods for EU Member States by making use of **openEO** and **CDSE**
 - Validate algorithms and support national uptake
 
-## Repository Structure
-
-Below is an example structure. You should adjust to match what you currently have. If you are interesting in testing out the commodity mapping; *classification* is the entry point
-
-```
-WAC/
-├── classification/         # Scripts for performing commodity classification tasks
-├── in_situ/                # [experimental] scripts for onboarding in-situ training data
-├── model_training/         # scripts detailing the model architecture definitions, training scripts, utilities
-├── requirements.txt        # Python dependencies
-```
-
 ## Installation & Dependencies
 
 
 Clone the repository:
-```git clone https://github.com/masolele/WAC
+```
+git clone https://github.com/masolele/WAC
 cd WAC
 ```
 
@@ -37,6 +26,40 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-Install Python dependencies:
+#### Users
+From inside their virtual environments, users can install the package as follows:
 
-Ensure **openEO** is installed
+```
+pip install .
+```
+
+To be able to run the notebooks, the optional `notebooks` dependency has to be installed as well:
+
+```
+pip install .[notebooks]
+```
+
+#### Developers
+
+The `world_agrocommodities` repository uses `uv` as package manager (https://github.com/astral-sh/uv). From the `uv.lock` file, developers can install all necessary dependencies (including the optional groups), by running
+
+```
+uv sync --all-extras
+```
+
+This will automatically create a venv used by `uv`, you can activate the venv from the root of the repository:
+
+```
+source .venv/bin/activate
+```
+Afterwards, developers can install `world_agrocommodities` in editable mode and install the git hooks
+
+```
+uv pip install -e . && uv run pre-commit install
+```
+
+Developers who want to avoid `uv` alltogether, can install the package and all optional dependencies in their favourite environment using `pip`
+
+```
+pip install -e .[dev,notebooks]
+```

@@ -1,9 +1,28 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/dist",
+  "/notebooks",
+  "/scripts",
+  "/bin",
+  "/tests",
+]
+
 [project]
-name = "wac"
-version = "0.1.0"
+name = "world_agrocommodities"
+version = "0.1.0a1"
+authors = [
+  { name="Robert Masolele" },
+  { name="Hans Vanrompay" },
+  { name="Vincent Verelst" },
+  { name="Jeroen Degerickx" },
+]
 description = "World AgroCommodities"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.12.*"
 dependencies = [
     "netcdf4==1.7.3",
     "openeo>=0.45.0",
@@ -13,15 +32,17 @@ dependencies = [
     "xarray==2025.1.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.14.2",
 ]
-notebook = [
+
+notebooks = [
     "matplotlib==3.10.7",
     "ipyleaflet==0.20.0",
     "ipywidgets==8.1.7",
+    "ipykernel==7.1.0"
 ]
 
 [tool.ruff]
