@@ -89,7 +89,7 @@ def map_commodities(
         connection=connection,
         cube=inference_cube,
         spatial_extent=spatial_extent,
-        # temporal_extent=temporal_extent,
+        crs=crs,
     )
 
     return output_cube
