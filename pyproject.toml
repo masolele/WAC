@@ -36,6 +36,7 @@ dependencies = [
 dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.14.2",
+    "pytest>=7.4.0",
 ]
 
 notebooks = [
@@ -44,6 +45,16 @@ notebooks = [
     "ipywidgets==8.1.7",
     "ipykernel==7.1.0"
 ]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --strict-config --disable-warnings --capture=no"
+testpaths = ["tests"]
+markers = [
+    "unit: fast isolated tests",
+    "integration: slower tests hitting external systems"
+]
+
 
 [tool.ruff]
 line-length = 88
