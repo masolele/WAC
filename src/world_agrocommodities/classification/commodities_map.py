@@ -74,11 +74,11 @@ def map_commodities(
     )
 
     # UDF based normalisation
-    cube_normalised = normalize_cube(cube, model_id=model_id)
+    # cube_normalised = normalize_cube(cube, model_id=model_id)
 
     # Run inference
     inference_cube = run_inference(
-        cube_normalised,
+        cube,
         model_id=model_id,
         patch_size=patch_size,
         overlap=overlap,
