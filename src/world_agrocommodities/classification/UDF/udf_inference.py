@@ -616,6 +616,13 @@ class ONNXClassifier:
 
 def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMetadata:
     model_id = context.get("model_id")
+
+    if context.get("skip_inference", False):
+        logger.info("Skipping metadata application as per context setting.")
+        model_metadata = get_model_metadata_from_stac(model_id)
+        band_names = model_metadata["input_bands"]
+        return metadata.rename_labels(dimension="bands", target=band_names)
+
     _, metadata_dict = load_ort_session(model_id)
 
     output_classes = metadata_dict["output_classes"] + ["ARGMAX"]
@@ -641,6 +648,12 @@ def apply_udf_data(udf_data: UdfData) -> UdfData:
 
     cube_with_lonlat = lonlat_calculator.append_lonlat(cube, crs)
     normalized_cube = normalizer.apply_normalization(cube_with_lonlat)
+
+    if context.get("skip_inference", False):
+        logger.info("Skipping inference as per context setting.")
+        udf_data.datacube_list = [XarrayDataCube(normalized_cube)]
+        return udf_data
+
     cube = cube.transpose("y", "x", "bands", "t")
     output = classifier.apply_model(normalized_cube)
 

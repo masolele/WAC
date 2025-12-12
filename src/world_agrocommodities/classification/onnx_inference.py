@@ -8,7 +8,11 @@ UDF_DIR = Path(__file__).parent.resolve() / "UDF"
 
 # TODO automate patch_size
 def run_inference(
-    input_cube: DataCube, model_id: str, patch_size: int = 64, overlap: int = 0
+    input_cube: DataCube,
+    model_id: str,
+    patch_size: int = 64,
+    overlap: int = 0,
+    skip_inference: bool = False,
 ) -> DataCube:
     """
     Run model inference over an input data cube.
@@ -27,6 +31,9 @@ def run_inference(
     """
 
     context = {"model_id": model_id}
+
+    if skip_inference:
+        context["skip_inference"] = True
 
     udf_inference = UDF.from_file(UDF_DIR / "udf_inference.py", context=context)
 

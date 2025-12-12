@@ -11,6 +11,8 @@
 # Exceptions
 !tests/integration/reference/inference_benchmark/job-results.json
 !tests/integration/reference/inference_benchmark/openEO.nc
+!tests/integration/reference/inference_input_benchmark/job-results.json
+!tests/integration/reference/inference_input_benchmark/openEO.nc
 
 # Python cache / build
 __pycache__/
