@@ -228,9 +228,7 @@ def load_input_cube(
     lonlat = compute_lonlat(s2, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
 
-    output = (
-        s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem).merge_cubes(lonlat)
-    )
+    output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem)
 
     # Merge all processed cubes
     return output

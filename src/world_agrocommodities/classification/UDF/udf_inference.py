@@ -14,7 +14,6 @@ from pyproj import Transformer
 from openeo.metadata import CollectionMetadata
 from openeo.udf import XarrayDataCube
 from openeo.udf.udf_data import UdfData
-# import boto3
 
 sys.path.append("onnx_deps")
 import onnxruntime as ort
@@ -258,21 +257,12 @@ def load_ort_session(model_id: str) -> Tuple[ort.InferenceSession, dict]:
             logger.error(f"Failed to load ONNX model from {model_path}: {e}")
             raise
 
-        # finally:
-        #     # Clean up temporary file
-        #     try:
-        #         os.unlink(model_path)
-        #     except OSError as e:
-        #         raise RuntimeError(
-        #             f"Failed to delete temporary model file: {model_path}"
-        #         ) from e
-
 
 # =============================================================================
 # Lon-Lat calculation
 # =============================================================================
 class LonLatCalculator:
-    def _calc_lonlat(self, cube: xr.DataArray, crs: str) -> xr.DataArray:
+    def _calc_lonlat(self, cube: xr.DataArray, crs: str | int) -> xr.DataArray:
         """
         Calculates lat/lon values for the given spatial extent.
 
@@ -286,15 +276,11 @@ class LonLatCalculator:
         logger.info(f"EPSG code determined for feature extraction: {crs}")
 
         transformer = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
-        longitudes, latitudes = transformer.transform(cube.x.values, cube.y.values)
-        lon_grid, lat_grid = np.meshgrid(longitudes, latitudes)
+        X, Y = np.meshgrid(cube.x.values, cube.y.values)
+        lon_grid, lat_grid = transformer.transform(X, Y)
 
-        logger.info(
-            f"Transformed longitudes range: {longitudes.min()}, {longitudes.max()}"
-        )
-        logger.info(
-            f"Transformed latitudes range: {latitudes.min()}, {latitudes.max()}"
-        )
+        logger.info(f"Transformed longitudes range: {lon_grid.min()}, {lon_grid.max()}")
+        logger.info(f"Transformed latitudes range: {lat_grid.min()}, {lat_grid.max()}")
 
         t_len = cube.sizes["t"]
         lon_t = np.broadcast_to(lon_grid, (t_len,) + lon_grid.shape)  # (t, y, x)
@@ -313,7 +299,7 @@ class LonLatCalculator:
 
         return combined
 
-    def append_lonlat(self, cube: xr.DataArray, crs: str) -> xr.DataArray:
+    def append_lonlat(self, cube: xr.DataArray, crs: str | int) -> xr.DataArray:
         """
         Appends lon/lat bands to the input cube.
 
@@ -649,10 +635,12 @@ def apply_udf_data(udf_data: UdfData) -> UdfData:
 
     logger.info(f"EPSG code determined for feature extraction: {crs}")
 
+    lonlat_calculator = LonLatCalculator()
     normalizer = Normalizer(context)
     classifier = ONNXClassifier(context)
 
-    normalized_cube = normalizer.apply_normalization(cube)
+    cube_with_lonlat = lonlat_calculator.append_lonlat(cube, crs)
+    normalized_cube = normalizer.apply_normalization(cube_with_lonlat)
     cube = cube.transpose("y", "x", "bands", "t")
     output = classifier.apply_model(normalized_cube)
 

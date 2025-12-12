@@ -73,9 +73,6 @@ def map_commodities(
         crs=crs,
     )
 
-    # UDF based normalisation
-    # cube_normalised = normalize_cube(cube, model_id=model_id)
-
     # Run inference
     inference_cube = run_inference(
         cube,
