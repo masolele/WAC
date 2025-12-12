@@ -17,17 +17,21 @@ from openeo.rest.udp import build_process_dict
 SPATIAL_PARAM = Parameter.spatial_extent(
     name="spatial_extent",
     description="spatial extent in UTM coordinates",
-    default=config.SPATIAL_EXTENT,
 )
-TEMPORAL_PARAM = Parameter.temporal_interval(
-    name="temporal_extent", default=config.TEMPORAL_EXTENT
-)
-CRS_PARAM = Parameter.string(
-    name="crs", description="CRS of the output in ", default=config.CRS
+
+TEMPORAL_PARAM = Parameter.temporal_interval(name="temporal_extent")
+CRS_PARAM = Parameter.string(name="crs", description="CRS of the output in ")
+
+MODEL_PARAM = Parameter.string(
+    name="model_id",
+    description="Model identifier",
+    default="WorldAgriCommodities_Africa_v1",
 )
 
 
 # %%
+
+
 def create_classification_cube(conn: Connection) -> DataCube:
     """
     Load data, preprocess, and run inference in a single pipeline.
@@ -40,32 +44,40 @@ def create_classification_cube(conn: Connection) -> DataCube:
     """
 
     # Load and preprocess data
-    cube = load_input_cube(
-        conn,
+
+    connection = openeo.connect("https://openeo.dataspace.copernicus.eu/")
+    connection.authenticate_oidc()
+
+    input_cube = load_input_cube(
+        connection,
         spatial_extent=SPATIAL_PARAM,
         temporal_extent=TEMPORAL_PARAM,
         max_cloud_cover=config.MAX_CLOUD_COVER,
-        quantile=config.QUANTILE,
         resolution=config.RESOLUTION,
+        quantile=config.QUANTILE,
         crs=CRS_PARAM,
     )
 
-    # UDF based normalisation
-    cube_normalised = normalize_cube(cube)
-
+    # Normalize input cube for ML inference
+    cube_normalised = normalize_cube(input_cube, model_id=MODEL_PARAM)
     # Run inference
     inference_cube = run_inference(
         cube_normalised,
-        model_name=config.MODEL_NAME,
+        model_id=MODEL_PARAM,
         patch_size=config.PATCH_SIZE,
         overlap=config.OVERLAP_SIZE,
     )
 
-    # Rename bands to probability labels
-    class_labels = [config.CLASS_MAPPING[i] for i in sorted(config.CLASS_MAPPING)] + [
-        "ARGMAX"
-    ]
-    return inference_cube.rename_labels(dimension="bands", target=class_labels)
+    # Add tree cover density layer
+    inference_cube = add_tree_cover_density(
+        connection=connection,
+        cube=inference_cube,
+        spatial_extent=SPATIAL_PARAM,
+    )
+
+    save_inference_cube = inference_cube.save_result(format="netCDF")
+
+    return save_inference_cube
 
 
 def generate_udp(
@@ -97,7 +109,7 @@ def generate_udp(
         process_graph=datacube,
         process_id=process_id,
         summary=summary,
-        parameters=[SPATIAL_PARAM, TEMPORAL_PARAM, CRS_PARAM],
+        parameters=[SPATIAL_PARAM, TEMPORAL_PARAM, CRS_PARAM, MODEL_PARAM],
         default_job_options=config.JOB_OPTIONS,
     )
 
@@ -131,7 +143,6 @@ generate_udp(
     output_dir=UDPdir,
 )
 
-import config as config
 
 # %%
 import openeo
