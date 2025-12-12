@@ -83,10 +83,7 @@ def map_commodities(
 
     # Add tree cover density
     output_cube = add_tree_cover_density(
-        connection=connection,
-        cube=inference_cube,
-        spatial_extent=spatial_extent,
-        crs=crs,
+        connection=connection, cube=inference_cube, spatial_extent=spatial_extent
     )
 
     return output_cube
