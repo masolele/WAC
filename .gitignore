@@ -7,3 +7,43 @@
 *.tiff
 *.pyc
 *.json
+
+# Exceptions
+!tests/integration/reference/inference_benchmark/job-results.json
+!tests/integration/reference/inference_benchmark/openEO.nc
+!tests/integration/reference/inference_input_benchmark/job-results.json
+!tests/integration/reference/inference_input_benchmark/openEO.nc
+
+# Python cache / build
+__pycache__/
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.env/
+.env*/
+.venv/
+
+# IDE folders
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment / misc
+*.env
+.env.local

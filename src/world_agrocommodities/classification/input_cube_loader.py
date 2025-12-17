@@ -1,14 +1,9 @@
 # TODO do normalisation in extractor instead of UDF
 
-from pathlib import Path
 from typing import Dict, List, Union
 
-from openeo import UDF, Connection, DataCube
+from openeo import Connection, DataCube
 from openeo.processes import array_element, date_shift, quantiles
-
-# Determine script directory
-BASE_DIR = Path(__file__).parent.resolve()
-UDF_DIR = BASE_DIR / "UDF"
 
 
 def load_sentinel2(
@@ -134,33 +129,6 @@ def load_sentinel1(
     )
 
 
-# TODO need to double check if we get a smooth output
-def compute_lonlat(sentinel2: DataCube, resolution: int, crs: str) -> DataCube:
-    """
-    Calculates lat/lon values for the given spatial extent.
-
-    Args:
-        sentinel2: Input Sentinel-2 data cube.
-        spatial_extent: Spatial bounds of the data.
-        resolution: Spatial resolution in meters.
-        crs: Coordinate Reference System (e.g., 'EPSG:3035').
-
-    Returns:
-        DataCube: Cube with latitude and longitude as bands.
-    """
-
-    # for UDP generation
-    udf_lonlat = UDF.from_file(UDF_DIR / "udf_lon_lat.py")
-
-    latlon = (
-        sentinel2.apply(process=udf_lonlat)
-        .resample_spatial(resolution=resolution, projection=crs)
-        .rename_labels("bands", ["lon", "lat"])
-    )
-
-    return latlon
-
-
 def load_dem(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
@@ -225,12 +193,9 @@ def load_input_cube(
         conn, spatial_extent, temporal_extent, quantile, resolution, crs
     )
     veg_indices = compute_vegetation_indices(s2)
-    lonlat = compute_lonlat(s2, resolution, crs)
     dem = load_dem(conn, spatial_extent, resolution, crs)
 
-    output = (
-        s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem).merge_cubes(lonlat)
-    )
+    output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem)
 
     # Merge all processed cubes
     return output
