@@ -14,6 +14,8 @@ from pyproj import Transformer
 from openeo.metadata import CollectionMetadata
 from openeo.udf import XarrayDataCube
 from openeo.udf.udf_data import UdfData
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 sys.path.append("onnx_deps")
 import onnxruntime as ort
@@ -33,10 +35,38 @@ logger = logging.getLogger(__name__)
 _model_locks: Dict[str, threading.RLock] = {}
 _model_locks_lock = threading.Lock()  # Lock for managing the lock dictionary
 
-
+_retry_session = None
 # =============================================================================
 # Functions to download and load ONNX models with caching and thread-safety
 # =============================================================================
+
+
+def _get_retry_session() -> requests.Session:
+    """Get or create a requests session with retry logic."""
+    global _retry_session
+    if _retry_session is not None:
+        return _retry_session
+
+    retry = Retry(
+        total=5,
+        connect=5,
+        read=5,
+        status=5,
+        backoff_factor=1.0,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET"]),
+        raise_on_status=False,
+        respect_retry_after_header=True,
+    )
+
+    adapter = HTTPAdapter(max_retries=retry)
+
+    session = requests.Session()
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    _retry_session = session
+    return _retry_session
 
 
 def optimize_onnx_cpu_performance(num_threads):
@@ -114,7 +144,9 @@ def download_model_with_lock(
 
             try:
                 with os.fdopen(temp_fd, "wb") as temp_file:
-                    response = requests.get(model_url, stream=True, timeout=300)
+                    response = _get_retry_session().get(
+                        model_url, stream=True, timeout=300
+                    )
                     response.raise_for_status()
 
                     # Download with size checking
@@ -157,7 +189,7 @@ def get_model_metadata_from_stac(
         collection_id = "world-agri-commodities-models"
         url = f"{stac_api_url}/collections/{collection_id}/items/{model_id}"
 
-        response = requests.get(url)
+        response = _get_retry_session().get(url)
         response.raise_for_status()
 
         item = response.json()
@@ -184,7 +216,7 @@ def get_model_from_stac(
         collection_id = "world-agri-commodities-models"
         url = f"{stac_api_url}/collections/{collection_id}/items/{model_id}"
 
-        response = requests.get(url, timeout=30)
+        response = _get_retry_session().get(url, timeout=30)
         response.raise_for_status()
 
         item = response.json()
