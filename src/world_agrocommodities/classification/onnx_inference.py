@@ -10,8 +10,8 @@ UDF_DIR = Path(__file__).parent.resolve() / "UDF"
 def run_inference(
     input_cube: DataCube,
     model_id: str,
-    patch_size: int = 64,
-    overlap: int = 0,
+    patch_size: int = 128,
+    overlap: int = 32,
     skip_inference: bool = False,
 ) -> DataCube:
     """
