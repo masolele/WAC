@@ -376,7 +376,7 @@ class Normalizer:
                 "B12": (1.7417268007636313, 2.023298706048351),
             },
             "linear": {
-                "NDVI": (0, 1),
+                "NDVI": (0, 1),  # TODO: NDVI might not have been normalized in training
                 "NDRE": (-1, 1),
                 "EVI": (-1, 1),
                 "VV": (-25, 0),
@@ -537,7 +537,7 @@ class ONNXClassifier:
         # Mask invalid entries
         mask_invalid = ~np.isfinite(values)
 
-        # Replace NaN with 0, inf with large sentinel
+        # Replace NaN with 0, inf with large sentinel values
         sanitized = np.where(
             np.isnan(values), 0.0, values
         )  # TODO validate if this is okay
@@ -567,7 +567,7 @@ class ONNXClassifier:
         """
         Appends winning class index as new band to predictions:
         - Keeps original prediction values
-        - Adds new band (-1 for invalid, 0..n-1 for winning class)
+        - Adds one extra band with class index (-1 for invalid pixels, 0..N-1 otherwise)
         """
 
         # Apply sigmoid
