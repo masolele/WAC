@@ -20,12 +20,12 @@ OVERLAP_SIZE = 32
 
 
 JOB_OPTIONS = {
-    "driver-memory": "500m",
-    "driver-memoryOverhead": "2000m",
+    "driver-memory": "4000m",
+    # "driver-memoryOverhead": "2000m",
     "executor-memory": "2000m",
-    "executor-memoryOverhead": "1000m",
-    "python-memory": "3000m",
-    "max-executors": 10,
+    "executor-memoryOverhead": "3000m",
+    "python-memory": "disable",
+    "max-executors": 20,
     "allow_empty_cubes": True,
     "udf-dependency-archives": [
         "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_deps_python311.zip#onnx_deps",
