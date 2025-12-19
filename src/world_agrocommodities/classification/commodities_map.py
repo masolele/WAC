@@ -45,17 +45,19 @@ def map_commodities(
     model_id : Union[str, Parameter]
         ID of the inference ONNX model
     crs : Union[int, str, Parameter]
-        EPSG code of the projection you want in the output
+        EPSG code of the projection you want in the output. If str, should be of the format 'EPSG:xxxx'.
     max_cloud_cover : int, optional
         Max cloud cover percentage in sentinel_2 loading, by default config.MAX_CLOUD_COVER
     quantile : float, optional
         Quantile used in temporal aggregation, by default config.QUANTILE
     resolution : float, optional
-        Resolution of the output cube, by default config.RESOLUTION
+        Resolution of the output cube in units of the CRS, by default config.RESOLUTION
     patch_size : int, optional
         Size of the patch over which to run the inference, by default config.PATCH_SIZE
     overlap : int, optional
         Overlap of the patches over which inference is ran, by default config.OVERLAP_SIZE
+    skip_inference : bool, optional
+        Whether to skip the inference step and only prepare the input data, by default False
 
     Returns
     -------

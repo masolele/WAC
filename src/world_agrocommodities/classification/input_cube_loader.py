@@ -12,8 +12,8 @@ def load_sentinel2(
     temporal_extent: List[str],
     max_cloud_cover: int,
     quantile: float,
-    resolution: int,
     crs: str,
+    resolution: int | float,
 ) -> DataCube:
     """
     Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
@@ -23,8 +23,9 @@ def load_sentinel2(
         spatial_extent: Spatial bounds of the data.
         temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
         max_cloud_cover: Maximum allowed cloud cover percentage.
-        resolution: Spatial resolution in meters.
+        quantile: Quantile used in temporal aggregation.
         crs: Coordinate Reference System (e.g., 'EPSG:3035').
+        resolution: Spatial resolution in units of the CRS.
 
     Returns:
         DataCube: Monthly averaged and masked Sentinel-2 image cube.
@@ -90,8 +91,8 @@ def load_sentinel1(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     quantile: float,
-    resolution: int,
     crs: str,
+    resolution: int | float,
 ) -> DataCube:
     """
     Load Sentinel-1 VV/VH mosaics and apply log transformation.
@@ -104,8 +105,9 @@ def load_sentinel1(
         conn: OpenEO connection object.
         spatial_extent: Spatial bounds of the data.
         temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
-        resolution: Spatial resolution in meters.
+        quantile: Quantile used in temporal aggregation.
         crs: Coordinate Reference System (e.g., 'EPSG:3035').
+        resolution: Spatial resolution in units of the CRS.
 
     Returns:
         DataCube: Sentinel-1 log-transformed image cube.
@@ -132,8 +134,8 @@ def load_sentinel1(
 def load_dem(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
-    resolution: int,
     crs: str,
+    resolution: int | float,
 ) -> DataCube:
     """
     Load Digital Elevation Model (DEM) data and temporally reduce it if needed.
@@ -141,8 +143,8 @@ def load_dem(
     Args:
         conn: OpenEO connection object.
         spatial_extent: Spatial bounds of the data.
-        resolution: Spatial resolution in meters.
         crs: Coordinate Reference System (e.g., 'EPSG:3035').
+        resolution: Spatial resolution in units of the CRS.
 
     Returns:
         DataCube: DEM image cube.
@@ -159,7 +161,7 @@ def load_input_cube(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
-    crs: str,
+    crs: str | None = None,
     resolution: int = 10,
     max_cloud_cover: int = 85,
     quantile: float = 0.75,
@@ -173,8 +175,8 @@ def load_input_cube(
         spatial_extent: Spatial bounds of the data.
         temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
         max_cloud_cover: Maximum allowed cloud cover percentage.
-        resolution: Spatial resolution in meters.
-        crs: Coordinate Reference System (default: 'EPSG:3035').
+        resolution: Spatial resolution in units of the CRS.
+        crs: Coordinate Reference System (e.g., 'EPSG:3035') or None.
 
     Returns:
         DataCube: Final merged and normalized data cube.
@@ -186,14 +188,16 @@ def load_input_cube(
         temporal_extent,
         max_cloud_cover,
         quantile,
-        resolution,
         crs,
+        resolution,
     )
+
     s1 = load_sentinel1(
-        conn, spatial_extent, temporal_extent, quantile, resolution, crs
+        conn, spatial_extent, temporal_extent, quantile, crs, resolution
     )
+
     veg_indices = compute_vegetation_indices(s2)
-    dem = load_dem(conn, spatial_extent, resolution, crs)
+    dem = load_dem(conn, spatial_extent, crs, resolution)
 
     output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem)
 
