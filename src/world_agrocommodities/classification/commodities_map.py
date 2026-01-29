@@ -31,6 +31,7 @@ def map_commodities(
     patch_size: int = config.PATCH_SIZE,
     overlap: int = config.OVERLAP_SIZE,
     skip_inference: bool = False,
+    add_tree_cover_density: bool = True,
 ) -> openeo.DataCube:
     """Main function to create an openEO proces graph for the full inference pipeline.
 
@@ -86,8 +87,11 @@ def map_commodities(
     )
 
     # Add tree cover density
-    output_cube = add_tree_cover_density(
-        connection=connection, cube=inference_cube, spatial_extent=spatial_extent
-    )
+    if add_tree_cover_density:
+        output_cube = add_tree_cover_density(
+            connection=connection, cube=inference_cube, spatial_extent=spatial_extent
+        )
+    else:
+        output_cube = inference_cube
 
     return output_cube
