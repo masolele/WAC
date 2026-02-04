@@ -1,6 +1,8 @@
 # .pre-commit-config.yaml
 exclude: |-
-  tests/integration/reference/.*
+  tests/integration/reference/.*|
+  tests/unit/test_local_udf/input/.*|
+  tests/unit/test_local_udf/reference/.*|
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
