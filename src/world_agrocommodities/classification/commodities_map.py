@@ -11,7 +11,6 @@ from typing import Dict, Union, List
 
 from world_agrocommodities.classification import (
     add_tree_cover_density,
-    normalize_cube,
     load_input_cube,
     run_inference,
 )
@@ -31,7 +30,7 @@ def map_commodities(
     patch_size: int = config.PATCH_SIZE,
     overlap: int = config.OVERLAP_SIZE,
     skip_inference: bool = False,
-    add_tree_cover_density: bool = True,
+    add_tcd: bool = True,
 ) -> openeo.DataCube:
     """Main function to create an openEO proces graph for the full inference pipeline.
 
@@ -59,6 +58,8 @@ def map_commodities(
         Overlap of the patches over which inference is ran, by default config.OVERLAP_SIZE
     skip_inference : bool, optional
         Whether to skip the inference step and only prepare the input data, by default False
+    add_tcd : bool, optional
+        Whether to add tree cover density layer to the output cube, by default True
 
     Returns
     -------
@@ -87,7 +88,7 @@ def map_commodities(
     )
 
     # Add tree cover density
-    if add_tree_cover_density:
+    if add_tcd:
         output_cube = add_tree_cover_density(
             connection=connection, cube=inference_cube, spatial_extent=spatial_extent
         )
