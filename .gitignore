@@ -6,7 +6,6 @@
 *.tif
 *.tiff
 *.pyc
-*.json
 
 # Exceptions
 !tests/integration/reference/inference_benchmark/job-results.json
