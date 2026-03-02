@@ -38,24 +38,24 @@ def load_sentinel2(
         max_cloud_cover=max_cloud_cover,
     ).resample_spatial(resolution=resolution, projection=crs)
 
-    scl = conn.load_collection(
-        "SENTINEL2_L2A",
-        temporal_extent=temporal_extent,
-        spatial_extent=spatial_extent,
-        bands=["SCL"],
-        max_cloud_cover=max_cloud_cover,
-    ).resample_spatial(resolution=resolution, projection=crs)
+    # scl = conn.load_collection(
+    #     "SENTINEL2_L2A",
+    #     temporal_extent=temporal_extent,
+    #     spatial_extent=spatial_extent,
+    #     bands=["SCL"],
+    #     max_cloud_cover=max_cloud_cover,
+    # ).resample_spatial(resolution=resolution, projection=crs)
 
     # Aggressive cloud masking by dilation of SCL (dilation size is 201 pixels)
     # mask = scl.process("to_scl_dilation_mask", data=scl)
 
     # Conservative cloud masking using SCL values without any dilation
-    scl = scl.band("SCL")
-    mask = scl == 0
-    for mask_value in [1, 3, 8, 9, 10, 11]:
-        mask = (mask == 1) | (scl == mask_value)
+    # scl = scl.band("SCL")
+    # mask = scl == 0
+    # for mask_value in [1, 3, 8, 9, 10, 11]:
+    #     mask = (mask == 1) | (scl == mask_value)
 
-    s2 = s2.mask(mask)
+    # s2 = s2.mask(mask)
 
     return s2.aggregate_temporal_period(
         period="year", reducer=lambda data: quantiles(data, probabilities=[quantile])
