@@ -504,7 +504,7 @@ def plot_job_results(
 
     elif mode == "output":
         classification_var = "ARGMAX"
-        tree_cover_var = "Tree_cover_density_2020"
+        tree_cover_var = "Tree_cover_2020"
 
         for i, var in enumerate(variables_to_plot):
             if var not in ds:
@@ -534,7 +534,7 @@ def plot_job_results(
                     add_labels=False,
                 )
                 cbar = im.colorbar
-                cbar.set_label("Tree Cover Density (%)")
+                cbar.set_label("Tree Cover (%)")
             else:
                 # Probability or continuous confidence-like layers (0–1)
                 im = data.plot(

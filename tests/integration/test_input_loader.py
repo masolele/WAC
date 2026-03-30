@@ -32,12 +32,12 @@ def test_input_loader(tmp_path):
     )
 
     job = pg.execute_batch(
-        title="WorldAgroCommodities Input Cube Test",
+        title="WorldAgroCommodities Input Loader Test",
         out_format="netcdf",
         job_options=config.JOB_OPTIONS,
     )
 
-    reference_dir = Path(__file__).parent / "reference" / "inference_input_benchmark"
+    reference_dir = Path(__file__).parent / "reference" / "input_loader_benchmark"
     actual_dir = tmp_path / "actual"
     results = job.get_results()
 
