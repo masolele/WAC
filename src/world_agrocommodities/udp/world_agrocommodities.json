@@ -624,7 +624,7 @@
         "spatial_extent": {
           "from_parameter": "spatial_extent"
         },
-        "url": "https://www.stac.lcfm.dataspace.copernicus.eu/collections/LCFM_TCD-10_CDSE_v100"
+        "url": "https://stac.terrascope.be/collections/lcfm-lcm-10/"
       }
     },
     "reducedimension4": {
@@ -657,8 +657,30 @@
         },
         "dimension": "bands",
         "target": [
-          "Tree_cover_density_2020"
+          "Tree_cover_2020"
         ]
+      }
+    },
+    "apply2": {
+      "process_id": "apply",
+      "arguments": {
+        "data": {
+          "from_node": "renamelabels1"
+        },
+        "process": {
+          "process_graph": {
+            "eq1": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_parameter": "x"
+                },
+                "y": 10
+              },
+              "result": true
+            }
+          }
+        }
       }
     },
     "mergecubes6": {
@@ -668,7 +690,7 @@
           "from_node": "applyneighborhood1"
         },
         "cube2": {
-          "from_node": "renamelabels1"
+          "from_node": "apply2"
         }
       }
     },
