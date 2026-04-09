@@ -555,6 +555,7 @@ class ONNXClassifier:
         """Run ONNX session and remove batch dimension from output."""
         outputs = session.run(None, {input_name: input_tensor})
         pred = np.squeeze(outputs[0], axis=0)
+        pred = pred * 100  # Convert to percentage, later to be saved as uint8
         logger.info(f"Inference output shape={pred.shape}")
         return pred
 

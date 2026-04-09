@@ -28,6 +28,6 @@ JOB_OPTIONS = {
     "max-executors": 20,
     "allow_empty_cubes": True,
     "udf-dependency-archives": [
-        "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_deps_python311.zip#onnx_deps",
+        "https://s3.waw3-1.cloudferro.com/project_dependencies/onnx_deps_python311.zip#onnx_deps",
     ],
 }

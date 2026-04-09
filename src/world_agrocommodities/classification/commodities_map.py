@@ -95,4 +95,8 @@ def map_commodities(
     else:
         output_cube = inference_cube
 
+    # We cannot convert to uint8 for the normalized inputs, only for inference results
+    if not skip_inference:
+        output_cube = output_cube.linear_scale_range(0, 254, 0, 254)  # Convert to uint8
+
     return output_cube
