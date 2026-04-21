@@ -725,7 +725,7 @@
         "data": {
           "from_node": "apply3"
         },
-        "format": "netCDF",
+        "format": "GTiff",
         "options": {}
       },
       "result": true

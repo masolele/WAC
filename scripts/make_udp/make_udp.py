@@ -34,7 +34,7 @@ pg = map_commodities(
     temporal_extent=TEMPORAL_PARAM,
     model_id=MODEL_PARAM,
     crs=CRS_PARAM,
-).save_result(format="netCDF")
+).save_result()
 
 
 udp_dict = build_process_dict(
