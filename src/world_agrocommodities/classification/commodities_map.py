@@ -13,6 +13,7 @@ from world_agrocommodities.classification import (
     add_tree_cover,
     load_input_cube,
     run_inference,
+    smooth_probabilities_gaussian,
 )
 
 
@@ -31,6 +32,9 @@ def map_commodities(
     overlap: int = config.OVERLAP_SIZE,
     skip_inference: bool = False,
     add_tc: bool = True,
+    smooth_probabilities: bool = True,
+    kernel_size: int = 9,
+    sigma: float = 2.0,
 ) -> openeo.DataCube:
     """Main function to create an openEO proces graph for the full inference pipeline.
 
@@ -60,7 +64,12 @@ def map_commodities(
         Whether to skip the inference step and only prepare the input data, by default False
     add_tc: bool, optional
         Whether to add 2020 tree cover layer to the output cube, by default True
-
+    smooth_probabilities: bool, optional
+        Whether to apply Gaussian smoothing to the probability data cube, by default True
+    kernel_size: int, optional
+        Size of the Gaussian kernel (must be odd), by default 9
+    sigma: float, optional
+        Standard deviation for the Gaussian kernel, by default 2.0
     Returns
     -------
     openeo.DataCube
@@ -86,6 +95,11 @@ def map_commodities(
         overlap=overlap,
         skip_inference=skip_inference,
     )
+
+    if smooth_probabilities and not skip_inference:
+        inference_cube = smooth_probabilities_gaussian(
+            cube=inference_cube, kernel_size=kernel_size, sigma=sigma
+        )
 
     # Add tree cover
     if add_tc:
