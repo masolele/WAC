@@ -520,12 +520,12 @@ class ONNXClassifier:
     def _preprocess_image(
         self,
         cube: xr.DataArray,
-    ) -> Tuple[np.ndarray, Dict[str, xr.DataArray], np.ndarray]:
+    ) -> Tuple[np.ndarray, Dict[str, xr.DataArray]]:
         """
         Prepare the input cube for inference:
         - Transpose to (y, x, bands)
         - Sanitize NaN/Inf
-        - Return batch tensor, coords, and invalid-value mask
+        - Return batch tensor and coords
         """
         # Reorder dims
         if "t" in cube.dims:
@@ -533,9 +533,6 @@ class ONNXClassifier:
 
         reordered = cube.transpose("y", "x", "bands")
         values = reordered.values.astype(np.float32)
-
-        # Mask invalid entries
-        mask_invalid = ~np.isfinite(values)
 
         # Replace NaN with 0, inf with large sentinel values
         sanitized = np.where(
@@ -547,7 +544,7 @@ class ONNXClassifier:
         # Add batch dimension
         input_tensor = sanitized[None, ...]
         logger.info(f"Preprocessed tensor shape={input_tensor.shape}")
-        return input_tensor, dict(reordered.coords), mask_invalid
+        return input_tensor, dict(reordered.coords)
 
     def _run_inference(
         self, session: ort.InferenceSession, input_name: str, input_tensor: np.ndarray
@@ -558,42 +555,6 @@ class ONNXClassifier:
         pred = pred * 100  # Convert to percentage, later to be saved as uint8
         logger.info(f"Inference output shape={pred.shape}")
         return pred
-
-    def _postprocess_output(
-        self,
-        pred: np.ndarray,  # Shape: [y, x, bands]
-        coords: Dict[str, xr.DataArray],
-        mask_invalid: np.ndarray,  # Shape: [y, x, bands]
-    ) -> xr.DataArray:
-        """
-        Appends winning class index as new band to predictions:
-        - Keeps original prediction values
-        - Adds one extra band with class index (-1 for invalid pixels, 0..N-1 otherwise)
-        """
-
-        # Apply sigmoid
-        # sigmoid_probs = expit(pred)  # shape [y, x, bands]
-
-        # Optionally pick highest prob if needed
-        # class_index = np.argmax(pred, axis=-1, keepdims=True)
-
-        # Identify invalid pixels (any invalid in input bands)
-        class_index = np.argmax(pred, axis=-1, keepdims=True)  # shape [y, x, 1]
-
-        invalid_mask = np.any(mask_invalid, axis=-1, keepdims=True)
-        class_index = np.where(invalid_mask, -1, class_index).astype(np.float32)
-
-        # Update band coordinates
-        new_band_coords = np.arange(pred.shape[-1] + 1)
-
-        combined = np.concatenate([pred, class_index], axis=-1)
-
-        return xr.DataArray(
-            combined,
-            dims=("y", "x", "bands"),
-            coords={"y": coords["y"], "x": coords["x"], "bands": new_band_coords},
-            attrs={"description": "Original preds, sigmoid probs, class index"},
-        )
 
     def _apply_model_single_timestep(self, cube: xr.DataArray) -> xr.DataArray:
         """
@@ -617,11 +578,19 @@ class ONNXClassifier:
             logger.warning(f"Band mismatch. Cube: {cube_bands}, Model: {input_bands}")
             cube = cube.sel(bands=input_bands)
 
-        input_tensor, coords, mask_invalid = self._preprocess_image(cube)
+        input_tensor, coords = self._preprocess_image(cube)
         input_name = session.get_inputs()[0].name
         raw_pred = self._run_inference(session, input_name, input_tensor)
 
-        return self._postprocess_output(raw_pred, coords, mask_invalid)
+        return xr.DataArray(
+            raw_pred,
+            dims=("y", "x", "bands"),
+            coords={
+                "y": coords["y"],
+                "x": coords["x"],
+                "bands": np.arange(raw_pred.shape[-1]),
+            },
+        )
 
     def apply_model(self, cube: xr.DataArray) -> xr.DataArray:
         """
@@ -658,7 +627,7 @@ def apply_metadata(metadata: CollectionMetadata, context: dict) -> CollectionMet
 
     _, metadata_dict = load_ort_session(model_id)
 
-    output_classes = metadata_dict["output_classes"] + ["ARGMAX"]
+    output_classes = metadata_dict["output_classes"]
     logger.info(f"Applying metadata with output classes: {output_classes}")
     return metadata.rename_labels(dimension="bands", target=output_classes)
 

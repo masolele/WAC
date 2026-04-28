@@ -11,7 +11,9 @@ from openeo.udf.udf_data import UdfData
 from openeo.testing.results import assert_job_results_allclose
 
 
-UDF_DEPENDENCY_ARCHIVE = "https://s3.waw3-1.cloudferro.com/swift/v1/project_dependencies/onnx_deps_python311.zip"
+UDF_DEPENDENCY_ARCHIVE = (
+    "https://s3.waw3-1.cloudferro.com/project_dependencies/onnx_deps_python311.zip"
+)
 TEST_FILE_PATH = Path(__file__).parent / "input" / "wac-udf-input-nolonlat.nc"
 EPSG = 32634
 REFERENCE = Path(__file__).parent / "reference" / "wac-udf-output.nc"
@@ -71,9 +73,12 @@ def test_local_udf(tmp_path):
     model_id = context.get("model_id")
     _, metadata_dict = load_ort_session(model_id)
 
-    output_classes = metadata_dict["output_classes"] + ["ARGMAX"]
+    output_classes = metadata_dict["output_classes"]
     output = output.assign_coords(bands=output_classes)
-    output.to_dataset(dim="bands").to_netcdf(tmp_path / "wac-udf-output.nc")
+    output.to_dataset(dim="bands").to_netcdf(
+        Path("/home/vverelst/Desktop/") / "wac-udf-output.nc"
+    )
+    # output.to_dataset(dim="bands").to_netcdf(tmp_path / "wac-udf-output.nc")
 
     assert_job_results_allclose(
         actual=tmp_path / "wac-udf-output.nc",
