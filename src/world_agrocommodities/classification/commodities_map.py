@@ -110,15 +110,15 @@ def map_commodities(
     else:
         output_cube = inference_cube
 
-    output_cube = add_cloud_percentage(
-        conn=connection,
-        cube=output_cube,
-        temporal_extent=temporal_extent,
-        spatial_extent=spatial_extent,
-        max_cloud_cover=max_cloud_cover,
-        resolution=resolution,
-        crs=crs,
-    )
+    # output_cube = add_cloud_percentage(
+    #     conn=connection,
+    #     cube=output_cube,
+    #     temporal_extent=temporal_extent,
+    #     spatial_extent=spatial_extent,
+    #     max_cloud_cover=max_cloud_cover,
+    #     resolution=resolution,
+    #     crs=crs,
+    # )
     # We cannot convert to uint8 for the normalized inputs, only for inference results
     if not skip_inference:
         output_cube = output_cube.linear_scale_range(0, 254, 0, 254)  # Convert to uint8
