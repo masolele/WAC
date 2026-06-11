@@ -35,7 +35,7 @@ def test_inference_benchark(tmp_path):
 
     job = pg.execute_batch(
         title="WorldAgroCommodities Inference Benchmark Test",
-        out_format="netcdf",
+        out_format="GTiff",
         job_options=config.JOB_OPTIONS,
     )
 

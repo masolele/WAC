@@ -37,6 +37,7 @@ dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.14.2",
     "pytest>=7.4.0",
+    "rioxarray>=0.14.0"
 ]
 
 notebooks = [
