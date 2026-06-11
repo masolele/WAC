@@ -24,7 +24,7 @@
                   "x": {
                     "from_parameter": "value"
                   },
-                  "y": 50
+                  "y": 100
                 },
                 "result": true
               }
@@ -53,11 +53,159 @@
         "resolution": 10
       }
     },
+    "loadcollection2": {
+      "process_id": "load_collection",
+      "arguments": {
+        "bands": [
+          "SCL"
+        ],
+        "id": "SENTINEL2_L2A",
+        "properties": {
+          "eo:cloud_cover": {
+            "process_graph": {
+              "lte2": {
+                "process_id": "lte",
+                "arguments": {
+                  "x": {
+                    "from_parameter": "value"
+                  },
+                  "y": 100
+                },
+                "result": true
+              }
+            }
+          }
+        },
+        "spatial_extent": {
+          "from_parameter": "spatial_extent"
+        },
+        "temporal_extent": {
+          "from_parameter": "temporal_extent"
+        }
+      }
+    },
+    "resamplespatial2": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection2"
+        },
+        "method": "near",
+        "projection": {
+          "from_parameter": "crs"
+        },
+        "resolution": 10
+      }
+    },
+    "reducedimension1": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "resamplespatial2"
+        },
+        "dimension": "bands",
+        "reducer": {
+          "process_graph": {
+            "arrayelement1": {
+              "process_id": "array_element",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                },
+                "index": 0
+              }
+            },
+            "eq1": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": 3
+              }
+            },
+            "eq2": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": 8
+              }
+            },
+            "or1": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "eq1"
+                },
+                "y": {
+                  "from_node": "eq2"
+                }
+              }
+            },
+            "eq3": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": 9
+              }
+            },
+            "or2": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "or1"
+                },
+                "y": {
+                  "from_node": "eq3"
+                }
+              }
+            },
+            "eq4": {
+              "process_id": "eq",
+              "arguments": {
+                "x": {
+                  "from_node": "arrayelement1"
+                },
+                "y": 10
+              }
+            },
+            "or3": {
+              "process_id": "or",
+              "arguments": {
+                "x": {
+                  "from_node": "or2"
+                },
+                "y": {
+                  "from_node": "eq4"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      }
+    },
+    "mask1": {
+      "process_id": "mask",
+      "arguments": {
+        "data": {
+          "from_node": "resamplespatial1"
+        },
+        "mask": {
+          "from_node": "reducedimension1"
+        }
+      }
+    },
     "aggregatetemporalperiod1": {
       "process_id": "aggregate_temporal_period",
       "arguments": {
         "data": {
-          "from_node": "resamplespatial1"
+          "from_node": "mask1"
         },
         "period": "year",
         "reducer": {
@@ -99,7 +247,7 @@
         "type": "bands"
       }
     },
-    "reducedimension1": {
+    "reducedimension2": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
@@ -108,7 +256,7 @@
         "dimension": "bands",
         "reducer": {
           "process_graph": {
-            "arrayelement1": {
+            "arrayelement2": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -117,7 +265,7 @@
                 "index": 6
               }
             },
-            "arrayelement2": {
+            "arrayelement3": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -130,14 +278,14 @@
               "process_id": "subtract",
               "arguments": {
                 "x": {
-                  "from_node": "arrayelement1"
+                  "from_node": "arrayelement2"
                 },
                 "y": {
-                  "from_node": "arrayelement2"
+                  "from_node": "arrayelement3"
                 }
               }
             },
-            "arrayelement3": {
+            "arrayelement4": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -146,7 +294,7 @@
                 "index": 6
               }
             },
-            "arrayelement4": {
+            "arrayelement5": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -159,10 +307,10 @@
               "process_id": "add",
               "arguments": {
                 "x": {
-                  "from_node": "arrayelement3"
+                  "from_node": "arrayelement4"
                 },
                 "y": {
-                  "from_node": "arrayelement4"
+                  "from_node": "arrayelement5"
                 }
               }
             },
@@ -186,7 +334,7 @@
       "process_id": "add_dimension",
       "arguments": {
         "data": {
-          "from_node": "reducedimension1"
+          "from_node": "reducedimension2"
         },
         "label": "NDRE",
         "name": "bands",
@@ -204,7 +352,7 @@
         }
       }
     },
-    "reducedimension2": {
+    "reducedimension3": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
@@ -213,7 +361,7 @@
         "dimension": "bands",
         "reducer": {
           "process_graph": {
-            "arrayelement5": {
+            "arrayelement6": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -222,7 +370,7 @@
                 "index": 6
               }
             },
-            "arrayelement6": {
+            "arrayelement7": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -235,10 +383,10 @@
               "process_id": "subtract",
               "arguments": {
                 "x": {
-                  "from_node": "arrayelement5"
+                  "from_node": "arrayelement6"
                 },
                 "y": {
-                  "from_node": "arrayelement6"
+                  "from_node": "arrayelement7"
                 }
               }
             },
@@ -251,7 +399,7 @@
                 }
               }
             },
-            "arrayelement7": {
+            "arrayelement8": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -260,7 +408,7 @@
                 "index": 6
               }
             },
-            "arrayelement8": {
+            "arrayelement9": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -274,7 +422,7 @@
               "arguments": {
                 "x": 6,
                 "y": {
-                  "from_node": "arrayelement8"
+                  "from_node": "arrayelement9"
                 }
               }
             },
@@ -282,14 +430,14 @@
               "process_id": "add",
               "arguments": {
                 "x": {
-                  "from_node": "arrayelement7"
+                  "from_node": "arrayelement8"
                 },
                 "y": {
                   "from_node": "multiply2"
                 }
               }
             },
-            "arrayelement9": {
+            "arrayelement10": {
               "process_id": "array_element",
               "arguments": {
                 "data": {
@@ -303,7 +451,7 @@
               "arguments": {
                 "x": 7.5,
                 "y": {
-                  "from_node": "arrayelement9"
+                  "from_node": "arrayelement10"
                 }
               }
             },
@@ -347,7 +495,7 @@
       "process_id": "add_dimension",
       "arguments": {
         "data": {
-          "from_node": "reducedimension2"
+          "from_node": "reducedimension3"
         },
         "label": "EVI",
         "name": "bands",
@@ -376,7 +524,7 @@
         }
       }
     },
-    "arrayelement10": {
+    "arrayelement11": {
       "process_id": "array_element",
       "arguments": {
         "data": {
@@ -385,7 +533,7 @@
         "index": 0
       }
     },
-    "arrayelement11": {
+    "arrayelement12": {
       "process_id": "array_element",
       "arguments": {
         "data": {
@@ -398,13 +546,13 @@
       "process_id": "date_shift",
       "arguments": {
         "date": {
-          "from_node": "arrayelement11"
+          "from_node": "arrayelement12"
         },
         "unit": "day",
         "value": 1
       }
     },
-    "loadcollection2": {
+    "loadcollection3": {
       "process_id": "load_collection",
       "arguments": {
         "bands": [
@@ -417,7 +565,7 @@
         },
         "temporal_extent": [
           {
-            "from_node": "arrayelement10"
+            "from_node": "arrayelement11"
           },
           {
             "from_node": "dateshift1"
@@ -425,12 +573,12 @@
         ]
       }
     },
-    "resamplespatial2": {
+    "resamplespatial3": {
       "process_id": "resample_spatial",
       "arguments": {
         "align": "upper-left",
         "data": {
-          "from_node": "loadcollection2"
+          "from_node": "loadcollection3"
         },
         "method": "near",
         "projection": {
@@ -443,7 +591,7 @@
       "process_id": "apply",
       "arguments": {
         "data": {
-          "from_node": "resamplespatial2"
+          "from_node": "resamplespatial3"
         },
         "process": {
           "process_graph": {
@@ -506,7 +654,7 @@
         }
       }
     },
-    "loadcollection3": {
+    "loadcollection4": {
       "process_id": "load_collection",
       "arguments": {
         "id": "COPERNICUS_30",
@@ -516,12 +664,12 @@
         "temporal_extent": null
       }
     },
-    "resamplespatial3": {
+    "resamplespatial4": {
       "process_id": "resample_spatial",
       "arguments": {
         "align": "upper-left",
         "data": {
-          "from_node": "loadcollection3"
+          "from_node": "loadcollection4"
         },
         "method": "bilinear",
         "projection": {
@@ -530,11 +678,11 @@
         "resolution": 10
       }
     },
-    "reducedimension3": {
+    "reducedimension4": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
-          "from_node": "resamplespatial3"
+          "from_node": "resamplespatial4"
         },
         "dimension": "t",
         "reducer": {
@@ -559,7 +707,7 @@
           "from_node": "mergecubes4"
         },
         "cube2": {
-          "from_node": "reducedimension3"
+          "from_node": "reducedimension4"
         }
       }
     },
@@ -739,7 +887,7 @@
         "url": "https://stac.terrascope.be/collections/lcfm-lcm-10/"
       }
     },
-    "reducedimension4": {
+    "reducedimension5": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
@@ -765,7 +913,7 @@
       "process_id": "rename_labels",
       "arguments": {
         "data": {
-          "from_node": "reducedimension4"
+          "from_node": "reducedimension5"
         },
         "dimension": "bands",
         "target": [
@@ -781,7 +929,7 @@
         },
         "process": {
           "process_graph": {
-            "eq1": {
+            "eq5": {
               "process_id": "eq",
               "arguments": {
                 "x": {
@@ -806,245 +954,11 @@
         }
       }
     },
-    "loadcollection4": {
-      "process_id": "load_collection",
-      "arguments": {
-        "bands": [
-          "SCL"
-        ],
-        "id": "SENTINEL2_L2A",
-        "properties": {
-          "eo:cloud_cover": {
-            "process_graph": {
-              "lte2": {
-                "process_id": "lte",
-                "arguments": {
-                  "x": {
-                    "from_parameter": "value"
-                  },
-                  "y": 50
-                },
-                "result": true
-              }
-            }
-          }
-        },
-        "spatial_extent": {
-          "from_parameter": "spatial_extent"
-        },
-        "temporal_extent": {
-          "from_parameter": "temporal_extent"
-        }
-      }
-    },
-    "resamplespatial4": {
-      "process_id": "resample_spatial",
-      "arguments": {
-        "align": "upper-left",
-        "data": {
-          "from_node": "loadcollection4"
-        },
-        "method": "near",
-        "projection": {
-          "from_parameter": "crs"
-        },
-        "resolution": 10
-      }
-    },
     "apply3": {
       "process_id": "apply",
       "arguments": {
         "data": {
-          "from_node": "resamplespatial4"
-        },
-        "process": {
-          "process_graph": {
-            "eq2": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 0
-              }
-            },
-            "eq3": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 1
-              }
-            },
-            "eq4": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 3
-              }
-            },
-            "eq5": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 8
-              }
-            },
-            "eq6": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 9
-              }
-            },
-            "eq7": {
-              "process_id": "eq",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 10
-              }
-            },
-            "or1": {
-              "process_id": "or",
-              "arguments": {
-                "x": {
-                  "from_node": "eq6"
-                },
-                "y": {
-                  "from_node": "eq7"
-                }
-              }
-            },
-            "or2": {
-              "process_id": "or",
-              "arguments": {
-                "x": {
-                  "from_node": "eq5"
-                },
-                "y": {
-                  "from_node": "or1"
-                }
-              }
-            },
-            "or3": {
-              "process_id": "or",
-              "arguments": {
-                "x": {
-                  "from_node": "eq4"
-                },
-                "y": {
-                  "from_node": "or2"
-                }
-              }
-            },
-            "or4": {
-              "process_id": "or",
-              "arguments": {
-                "x": {
-                  "from_node": "eq3"
-                },
-                "y": {
-                  "from_node": "or3"
-                }
-              }
-            },
-            "or5": {
-              "process_id": "or",
-              "arguments": {
-                "x": {
-                  "from_node": "eq2"
-                },
-                "y": {
-                  "from_node": "or4"
-                }
-              },
-              "result": true
-            }
-          }
-        }
-      }
-    },
-    "renamelabels2": {
-      "process_id": "rename_labels",
-      "arguments": {
-        "data": {
-          "from_node": "apply3"
-        },
-        "dimension": "bands",
-        "target": [
-          "Cloud_percentage"
-        ]
-      }
-    },
-    "aggregatetemporalperiod3": {
-      "process_id": "aggregate_temporal_period",
-      "arguments": {
-        "data": {
-          "from_node": "renamelabels2"
-        },
-        "period": "year",
-        "reducer": {
-          "process_graph": {
-            "mean1": {
-              "process_id": "mean",
-              "arguments": {
-                "data": {
-                  "from_parameter": "data"
-                }
-              },
-              "result": true
-            }
-          }
-        }
-      }
-    },
-    "apply4": {
-      "process_id": "apply",
-      "arguments": {
-        "data": {
-          "from_node": "aggregatetemporalperiod3"
-        },
-        "process": {
-          "process_graph": {
-            "multiply5": {
-              "process_id": "multiply",
-              "arguments": {
-                "x": {
-                  "from_parameter": "x"
-                },
-                "y": 100
-              },
-              "result": true
-            }
-          }
-        }
-      }
-    },
-    "mergecubes7": {
-      "process_id": "merge_cubes",
-      "arguments": {
-        "cube1": {
           "from_node": "mergecubes6"
-        },
-        "cube2": {
-          "from_node": "apply4"
-        }
-      }
-    },
-    "apply5": {
-      "process_id": "apply",
-      "arguments": {
-        "data": {
-          "from_node": "mergecubes7"
         },
         "process": {
           "process_graph": {
@@ -1069,7 +983,7 @@
       "process_id": "save_result",
       "arguments": {
         "data": {
-          "from_node": "apply5"
+          "from_node": "apply3"
         },
         "format": "GTiff",
         "options": {}
