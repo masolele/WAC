@@ -1130,7 +1130,12 @@
       "name": "model_id",
       "description": "Model identifier",
       "schema": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "WorldAgriCommodities_SoutheastAsia_v1",
+          "WorldAgriCommodities_LatinAmerica_v1",
+          "WorldAgriCommodities_Africa_v1"
+        ]
       }
     }
   ]

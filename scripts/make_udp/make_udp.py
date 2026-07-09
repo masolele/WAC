@@ -21,7 +21,14 @@ CRS_PARAM = Parameter.string(
     name="crs", description="CRS identifier of the output, e.g. 'EPSG:4326'"
 )
 
-MODEL_PARAM = Parameter.string(name="model_id", description="Model identifier")
+allowed_values = [
+    "WorldAgriCommodities_SoutheastAsia_v1",
+    "WorldAgriCommodities_LatinAmerica_v1",
+    "WorldAgriCommodities_Africa_v1",
+]
+MODEL_PARAM = Parameter.string(
+    name="model_id", description="Model identifier", values=allowed_values
+)
 
 
 connection = openeo.connect(
