@@ -21,6 +21,10 @@ CRS_PARAM = Parameter.string(
     name="crs", description="CRS identifier of the output, e.g. 'EPSG:4326'"
 )
 
+RESOLUTION_PARAM = Parameter.number(
+    name="resolution", description="Resolution of the output in units of the CRS"
+)
+
 allowed_values = [
     "WorldAgriCommodities_SoutheastAsia_v1",
     "WorldAgriCommodities_LatinAmerica_v1",
@@ -41,13 +45,20 @@ pg = map_commodities(
     temporal_extent=TEMPORAL_PARAM,
     model_id=MODEL_PARAM,
     crs=CRS_PARAM,
+    resolution=RESOLUTION_PARAM,
 ).save_result()
 
 
 udp_dict = build_process_dict(
     process_graph=pg,
     process_id="world_agrocommodities",
-    parameters=[SPATIAL_PARAM, TEMPORAL_PARAM, CRS_PARAM, MODEL_PARAM],
+    parameters=[
+        SPATIAL_PARAM,
+        TEMPORAL_PARAM,
+        CRS_PARAM,
+        RESOLUTION_PARAM,
+        MODEL_PARAM,
+    ],
     default_job_options=config.JOB_OPTIONS,
 )
 

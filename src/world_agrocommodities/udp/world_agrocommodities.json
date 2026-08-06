@@ -50,7 +50,9 @@
         "projection": {
           "from_parameter": "crs"
         },
-        "resolution": 10
+        "resolution": {
+          "from_parameter": "resolution"
+        }
       }
     },
     "loadcollection2": {
@@ -95,7 +97,9 @@
         "projection": {
           "from_parameter": "crs"
         },
-        "resolution": 10
+        "resolution": {
+          "from_parameter": "resolution"
+        }
       }
     },
     "reducedimension1": {
@@ -584,7 +588,9 @@
         "projection": {
           "from_parameter": "crs"
         },
-        "resolution": 10
+        "resolution": {
+          "from_parameter": "resolution"
+        }
       }
     },
     "apply1": {
@@ -675,7 +681,9 @@
         "projection": {
           "from_parameter": "crs"
         },
-        "resolution": 10
+        "resolution": {
+          "from_parameter": "resolution"
+        }
       }
     },
     "reducedimension4": {
@@ -1124,6 +1132,13 @@
       "description": "CRS identifier of the output, e.g. 'EPSG:4326'",
       "schema": {
         "type": "string"
+      }
+    },
+    {
+      "name": "resolution",
+      "description": "Resolution of the output in units of the CRS",
+      "schema": {
+        "type": "number"
       }
     },
     {
