@@ -39,6 +39,22 @@
         }
       }
     },
+    "resamplespatial1": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection1"
+        },
+        "method": "near",
+        "projection": {
+          "from_parameter": "crs"
+        },
+        "resolution": {
+          "from_parameter": "resolution"
+        }
+      }
+    },
     "loadcollection2": {
       "process_id": "load_collection",
       "arguments": {
@@ -70,11 +86,27 @@
         }
       }
     },
+    "resamplespatial2": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection2"
+        },
+        "method": "near",
+        "projection": {
+          "from_parameter": "crs"
+        },
+        "resolution": {
+          "from_parameter": "resolution"
+        }
+      }
+    },
     "reducedimension1": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
-          "from_node": "loadcollection2"
+          "from_node": "resamplespatial2"
         },
         "dimension": "bands",
         "reducer": {
@@ -166,7 +198,7 @@
       "process_id": "mask",
       "arguments": {
         "data": {
-          "from_node": "loadcollection1"
+          "from_node": "resamplespatial1"
         },
         "mask": {
           "from_node": "reducedimension1"
@@ -545,11 +577,27 @@
         ]
       }
     },
+    "resamplespatial3": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection3"
+        },
+        "method": "near",
+        "projection": {
+          "from_parameter": "crs"
+        },
+        "resolution": {
+          "from_parameter": "resolution"
+        }
+      }
+    },
     "apply1": {
       "process_id": "apply",
       "arguments": {
         "data": {
-          "from_node": "loadcollection3"
+          "from_node": "resamplespatial3"
         },
         "process": {
           "process_graph": {
@@ -622,11 +670,27 @@
         "temporal_extent": null
       }
     },
+    "resamplespatial4": {
+      "process_id": "resample_spatial",
+      "arguments": {
+        "align": "upper-left",
+        "data": {
+          "from_node": "loadcollection4"
+        },
+        "method": "bilinear",
+        "projection": {
+          "from_parameter": "crs"
+        },
+        "resolution": {
+          "from_parameter": "resolution"
+        }
+      }
+    },
     "reducedimension4": {
       "process_id": "reduce_dimension",
       "arguments": {
         "data": {
-          "from_node": "loadcollection4"
+          "from_node": "resamplespatial4"
         },
         "dimension": "t",
         "reducer": {
@@ -644,18 +708,6 @@
         }
       }
     },
-    "resamplecubespatial1": {
-      "process_id": "resample_cube_spatial",
-      "arguments": {
-        "data": {
-          "from_node": "reducedimension4"
-        },
-        "method": "bilinear",
-        "target": {
-          "from_node": "aggregatetemporalperiod1"
-        }
-      }
-    },
     "mergecubes5": {
       "process_id": "merge_cubes",
       "arguments": {
@@ -663,7 +715,7 @@
           "from_node": "mergecubes4"
         },
         "cube2": {
-          "from_node": "resamplecubespatial1"
+          "from_node": "reducedimension4"
         }
       }
     },
@@ -910,27 +962,11 @@
         }
       }
     },
-    "resamplespatial1": {
-      "process_id": "resample_spatial",
-      "arguments": {
-        "align": "upper-left",
-        "data": {
-          "from_node": "mergecubes6"
-        },
-        "method": "near",
-        "projection": {
-          "from_parameter": "crs"
-        },
-        "resolution": {
-          "from_parameter": "resolution"
-        }
-      }
-    },
     "apply3": {
       "process_id": "apply",
       "arguments": {
         "data": {
-          "from_node": "resamplespatial1"
+          "from_node": "mergecubes6"
         },
         "process": {
           "process_graph": {
