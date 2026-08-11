@@ -12,8 +12,6 @@ def load_sentinel2(
     temporal_extent: List[str],
     max_cloud_cover: int,
     quantile: float,
-    crs: str,
-    resolution: int | float,
 ) -> DataCube:
     """
     Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
@@ -36,7 +34,7 @@ def load_sentinel2(
         spatial_extent=spatial_extent,
         bands=["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B11", "B12"],
         max_cloud_cover=max_cloud_cover,
-    ).resample_spatial(resolution=resolution, projection=crs)
+    )
 
     scl = conn.load_collection(
         "SENTINEL2_L2A",
@@ -44,7 +42,7 @@ def load_sentinel2(
         spatial_extent=spatial_extent,
         bands=["SCL"],
         max_cloud_cover=max_cloud_cover,
-    ).resample_spatial(resolution=resolution, projection=crs)
+    )
 
     # Aggressive cloud masking by dilation of SCL (dilation size is 201 pixels)
     # mask = scl.process("to_scl_dilation_mask", data=scl)
@@ -102,8 +100,6 @@ def load_sentinel1(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     quantile: float,
-    crs: str,
-    resolution: int | float,
 ) -> DataCube:
     """
     Load Sentinel-1 VV/VH mosaics and apply log transformation.
@@ -117,8 +113,6 @@ def load_sentinel1(
         spatial_extent: Spatial bounds of the data.
         temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
         quantile: Quantile used in temporal aggregation.
-        crs: Coordinate Reference System (e.g., 'EPSG:3035').
-        resolution: Spatial resolution in units of the CRS.
 
     Returns:
         DataCube: Sentinel-1 log-transformed image cube.
@@ -133,7 +127,7 @@ def load_sentinel1(
         temporal_extent=[orig_start, shifted_end],
         spatial_extent=spatial_extent,
         bands=["VV", "VH"],
-    ).resample_spatial(resolution=resolution, projection=crs)
+    )
 
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
 
@@ -143,10 +137,7 @@ def load_sentinel1(
 
 
 def load_dem(
-    conn: Connection,
-    spatial_extent: Dict[str, Union[float, str]],
-    crs: str,
-    resolution: int | float,
+    conn: Connection, spatial_extent: Dict[str, Union[float, str]]
 ) -> DataCube:
     """
     Load Digital Elevation Model (DEM) data and temporally reduce it if needed.
@@ -154,15 +145,11 @@ def load_dem(
     Args:
         conn: OpenEO connection object.
         spatial_extent: Spatial bounds of the data.
-        crs: Coordinate Reference System (e.g., 'EPSG:3035').
-        resolution: Spatial resolution in units of the CRS.
 
     Returns:
         DataCube: DEM image cube.
     """
-    dem = conn.load_collection(
-        "COPERNICUS_30", spatial_extent=spatial_extent
-    ).resample_spatial(resolution=resolution, projection=crs, method="bilinear")
+    dem = conn.load_collection("COPERNICUS_30", spatial_extent=spatial_extent)
     if dem.metadata.has_temporal_dimension():
         dem = dem.reduce_dimension(dimension="t", reducer="max")
     return dem
@@ -172,8 +159,6 @@ def load_input_cube(
     conn: Connection,
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
-    crs: str | None = None,
-    resolution: int = 10,
     max_cloud_cover: int = 85,
     quantile: float = 0.75,
 ) -> DataCube:
@@ -186,29 +171,19 @@ def load_input_cube(
         spatial_extent: Spatial bounds of the data.
         temporal_extent: Date range in ['YYYY-MM-DD', 'YYYY-MM-DD'] format.
         max_cloud_cover: Maximum allowed cloud cover percentage.
-        resolution: Spatial resolution in units of the CRS.
-        crs: Coordinate Reference System (e.g., 'EPSG:3035') or None.
 
     Returns:
         DataCube: Final merged and normalized data cube.
     """
     # Load all sources
     s2 = load_sentinel2(
-        conn,
-        spatial_extent,
-        temporal_extent,
-        max_cloud_cover,
-        quantile,
-        crs,
-        resolution,
+        conn, spatial_extent, temporal_extent, max_cloud_cover, quantile
     )
 
-    s1 = load_sentinel1(
-        conn, spatial_extent, temporal_extent, quantile, crs, resolution
-    )
+    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, quantile)
 
     veg_indices = compute_vegetation_indices(s2)
-    dem = load_dem(conn, spatial_extent, crs, resolution)
+    dem = load_dem(conn, spatial_extent).resample_cube_spatial(s2, method="bilinear")
 
     output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem)
 

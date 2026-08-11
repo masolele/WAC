@@ -18,11 +18,17 @@ SPATIAL_PARAM = Parameter.spatial_extent(
 
 TEMPORAL_PARAM = Parameter.temporal_interval(name="temporal_extent")
 CRS_PARAM = Parameter.string(
-    name="crs", description="CRS identifier of the output, e.g. 'EPSG:4326'"
+    name="crs",
+    description="CRS identifier of the output, e.g. 'EPSG:4326'",
+    optional=True,
+    default=None,
 )
 
 RESOLUTION_PARAM = Parameter.number(
-    name="resolution", description="Resolution of the output in units of the CRS"
+    name="resolution",
+    description="Resolution of the output in units of the CRS",
+    optional=True,
+    default=0,
 )
 
 allowed_values = [
@@ -55,9 +61,9 @@ udp_dict = build_process_dict(
     parameters=[
         SPATIAL_PARAM,
         TEMPORAL_PARAM,
+        MODEL_PARAM,
         CRS_PARAM,
         RESOLUTION_PARAM,
-        MODEL_PARAM,
     ],
     default_job_options=config.JOB_OPTIONS,
 )

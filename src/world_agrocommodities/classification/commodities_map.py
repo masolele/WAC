@@ -25,10 +25,10 @@ def map_commodities(
     model_id: Union[
         str, Parameter
     ],  # TODO: currently this is the ID. Should we change this to the model URL instead?
-    crs: Union[int, str, Parameter],
+    crs: Union[int, str, Parameter] = None,
     max_cloud_cover: int = config.MAX_CLOUD_COVER,
     quantile: float = config.QUANTILE,
-    resolution: float = config.RESOLUTION,
+    resolution: float = 0,
     patch_size: int = config.PATCH_SIZE,
     overlap: int = config.OVERLAP_SIZE,
     skip_inference: bool = False,
@@ -84,8 +84,6 @@ def map_commodities(
         temporal_extent=temporal_extent,
         max_cloud_cover=max_cloud_cover,
         quantile=quantile,
-        resolution=resolution,
-        crs=crs,
     )
 
     # Run inference
@@ -119,6 +117,9 @@ def map_commodities(
     #     resolution=resolution,
     #     crs=crs,
     # )
+
+    output_cube = output_cube.resample_spatial(resolution=resolution, projection=crs)
+
     # We cannot convert to uint8 for the normalized inputs, only for inference results
     if not skip_inference:
         output_cube = output_cube.linear_scale_range(0, 254, 0, 254)  # Convert to uint8
