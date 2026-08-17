@@ -17,16 +17,16 @@ SPATIAL_PARAM = Parameter.spatial_extent(
 )
 
 TEMPORAL_PARAM = Parameter.temporal_interval(name="temporal_extent")
-CRS_PARAM = Parameter.string(
+CRS_PARAM = Parameter.number(
     name="crs",
-    description="CRS identifier of the output, e.g. 'EPSG:4326'",
+    description="CRS EPSG code identifier of the output, e.g. 4326 for WGS84. If not provided, the local UTM projection will be used.",
     optional=True,
     default=None,
 )
 
 RESOLUTION_PARAM = Parameter.number(
     name="resolution",
-    description="Resolution of the output in units of the CRS",
+    description="Resolution of the output in units of the CRS. If not provided, the native resolution of Sentinel-2 (10m) will be used.",
     optional=True,
     default=0,
 )

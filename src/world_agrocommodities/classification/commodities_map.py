@@ -84,6 +84,8 @@ def map_commodities(
         temporal_extent=temporal_extent,
         max_cloud_cover=max_cloud_cover,
         quantile=quantile,
+        crs=crs,
+        resolution=resolution,
     )
 
     # Run inference
@@ -118,7 +120,7 @@ def map_commodities(
     #     crs=crs,
     # )
 
-    output_cube = output_cube.resample_spatial(resolution=resolution, projection=crs)
+    # output_cube = output_cube.resample_spatial(resolution=resolution, projection=crs)
 
     # We cannot convert to uint8 for the normalized inputs, only for inference results
     if not skip_inference:

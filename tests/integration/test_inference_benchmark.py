@@ -10,7 +10,6 @@ from openeo.testing.results import assert_job_results_allclose
 
 @pytest.mark.integration
 def test_inference_benchark(tmp_path):
-    # TODO: authentication with refresh token requires interactive login once, for CI we need to use a service account
     c = openeo.connect("openeo.dataspace.copernicus.eu").authenticate_oidc()
 
     spatial_extent = {

@@ -12,6 +12,8 @@ def load_sentinel2(
     temporal_extent: List[str],
     max_cloud_cover: int,
     quantile: float,
+    crs: Union[int, str] = None,
+    resolution: float = 0,
 ) -> DataCube:
     """
     Load Sentinel-2 L2A data, apply cloud masking, and compute monthly temporal mean.
@@ -34,7 +36,7 @@ def load_sentinel2(
         spatial_extent=spatial_extent,
         bands=["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B11", "B12"],
         max_cloud_cover=max_cloud_cover,
-    )
+    ).resample_spatial(resolution=resolution, projection=crs)
 
     scl = conn.load_collection(
         "SENTINEL2_L2A",
@@ -42,7 +44,7 @@ def load_sentinel2(
         spatial_extent=spatial_extent,
         bands=["SCL"],
         max_cloud_cover=max_cloud_cover,
-    )
+    ).resample_spatial(resolution=resolution, projection=crs)
 
     # Aggressive cloud masking by dilation of SCL (dilation size is 201 pixels)
     # mask = scl.process("to_scl_dilation_mask", data=scl)
@@ -100,6 +102,8 @@ def load_sentinel1(
     spatial_extent: Dict[str, Union[float, str]],
     temporal_extent: List[str],
     quantile: float,
+    crs: Union[int, str] = None,
+    resolution: float = 0,
 ) -> DataCube:
     """
     Load Sentinel-1 VV/VH mosaics and apply log transformation.
@@ -127,7 +131,7 @@ def load_sentinel1(
         temporal_extent=[orig_start, shifted_end],
         spatial_extent=spatial_extent,
         bands=["VV", "VH"],
-    )
+    ).resample_spatial(resolution=resolution, projection=crs)
 
     s1 = s1.apply(lambda x: 10 * x.log(base=10))
 
@@ -137,7 +141,10 @@ def load_sentinel1(
 
 
 def load_dem(
-    conn: Connection, spatial_extent: Dict[str, Union[float, str]]
+    conn: Connection,
+    spatial_extent: Dict[str, Union[float, str]],
+    crs: Union[int, str] = None,
+    resolution: float = 0,
 ) -> DataCube:
     """
     Load Digital Elevation Model (DEM) data and temporally reduce it if needed.
@@ -149,7 +156,9 @@ def load_dem(
     Returns:
         DataCube: DEM image cube.
     """
-    dem = conn.load_collection("COPERNICUS_30", spatial_extent=spatial_extent)
+    dem = conn.load_collection(
+        "COPERNICUS_30", spatial_extent=spatial_extent
+    ).resample_spatial(resolution=resolution, projection=crs, method="bilinear")
     if dem.metadata.has_temporal_dimension():
         dem = dem.reduce_dimension(dimension="t", reducer="max")
     return dem
@@ -161,6 +170,8 @@ def load_input_cube(
     temporal_extent: List[str],
     max_cloud_cover: int = 85,
     quantile: float = 0.75,
+    crs: Union[int, str] = None,
+    resolution: float = 0,
 ) -> DataCube:
     """
     Main extractor function that loads and processes all required input data cubes,
@@ -177,13 +188,21 @@ def load_input_cube(
     """
     # Load all sources
     s2 = load_sentinel2(
-        conn, spatial_extent, temporal_extent, max_cloud_cover, quantile
+        conn,
+        spatial_extent,
+        temporal_extent,
+        max_cloud_cover,
+        quantile,
+        crs,
+        resolution,
     )
 
-    s1 = load_sentinel1(conn, spatial_extent, temporal_extent, quantile)
+    s1 = load_sentinel1(
+        conn, spatial_extent, temporal_extent, quantile, crs, resolution
+    )
 
     veg_indices = compute_vegetation_indices(s2)
-    dem = load_dem(conn, spatial_extent).resample_cube_spatial(s2, method="bilinear")
+    dem = load_dem(conn, spatial_extent, crs, resolution)
 
     output = s2.merge_cubes(veg_indices).merge_cubes(s1).merge_cubes(dem)
 

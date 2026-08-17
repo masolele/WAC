@@ -1141,16 +1141,16 @@
     },
     {
       "name": "crs",
-      "description": "CRS identifier of the output, e.g. 'EPSG:4326'",
+      "description": "CRS EPSG code identifier of the output, e.g. 4326 for WGS84. If not provided, the local UTM projection will be used.",
       "schema": {
-        "type": "string"
+        "type": "number"
       },
       "optional": true,
       "default": null
     },
     {
       "name": "resolution",
-      "description": "Resolution of the output in units of the CRS",
+      "description": "Resolution of the output in units of the CRS. If not provided, the native resolution of Sentinel-2 (10m) will be used.",
       "schema": {
         "type": "number"
       },
